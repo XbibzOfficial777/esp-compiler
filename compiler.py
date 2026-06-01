@@ -35,8 +35,11 @@ class C:
 
 def load_config():
     if CONFIG_PATH.exists():
-        with open(CONFIG_PATH, "r") as f:
-            return json.load(f)
+        try:
+            with open(CONFIG_PATH, "r") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            return {}
     return {}
 
 
@@ -67,10 +70,6 @@ def fail(msg):
 
 def info(msg):
     print(f"      {C.GRY}[~]{C.RST} {msg}")
-
-
-def warn(msg):
-    print(f"      {C.YLW}[!]{C.RST} {msg}")
 
 
 def prompt(msg, default=""):
@@ -106,39 +105,60 @@ def resolve_path(p):
     return os.path.normpath(p)
 
 
+def validate_source(source_file):
+    """Validate source file with detailed checks."""
+    if not source_file:
+        return False, "No source file specified"
+
+    source_file = resolve_path(source_file)
+
+    if not os.path.isfile(source_file):
+        return False, f"File not found: {source_file}"
+
+    if not source_file.endswith(".ino"):
+        return False, f"Not a .ino file: {source_file}"
+
+    size = os.path.getsize(source_file)
+    if size == 0:
+        return False, "File is empty"
+
+    # Check folder name matches .ino name
+    basename = os.path.basename(source_file).replace(".ino", "")
+    parent_dir = os.path.basename(os.path.dirname(source_file))
+    if basename != parent_dir:
+        warn(f"Folder name mismatch: '{parent_dir}' != '{basename}'")
+        info("Arduino requires .ino file in a folder with the same name")
+
+    return True, source_file
+
+
 def prompt_source(allow_empty=False):
-    """Prompt user for source file path with retry loop."""
     while True:
         val = prompt("Source .ino file path")
         if not val and allow_empty:
             return None
         if not val:
             continue
-        resolved = resolve_path(val)
-        if os.path.isfile(resolved):
-            return resolved
-        fail(f"File not found: {val}")
-        info(f"Tried: {resolved}")
+        valid, result = validate_source(val)
+        if valid:
+            return result
+        fail(result)
         if not prompt_yn("Try different path?", default=True):
             return None
 
 
 def prompt_board():
-    """Prompt user for board FQBN with quick select."""
     section("Select board platform")
-
     choices = [
-        ("1", "ESP8266 Generic",   "esp8266:esp8266:generic"),
-        ("2", "ESP32 Generic",     "esp32:esp32:esp32"),
-        ("3", "ESP32-S2",          "esp32:esp32:esp32s2"),
-        ("4", "ESP32-S3",          "esp32:esp32:esp32s3"),
-        ("5", "ESP32-C3",          "esp32:esp32:esp32c3"),
+        ("1", "ESP8266 Generic", "esp8266:esp8266:generic"),
+        ("2", "ESP32 Generic",   "esp32:esp32:esp32"),
+        ("3", "ESP32-S2",        "esp32:esp32:esp32s2"),
+        ("4", "ESP32-S3",        "esp32:esp32:esp32s3"),
+        ("5", "ESP32-C3",        "esp32:esp32:esp32c3"),
     ]
-
     info("Quick select:")
     for num, name, fqbn in choices:
         print(f"        {C.CYN}{num}{C.RST}. {name}  {C.GRY}{fqbn}{C.RST}")
-
     while True:
         choice = prompt("Board", "1")
         for num, name, fqbn in choices:
@@ -147,6 +167,25 @@ def prompt_board():
         if ":" in choice:
             return choice
         fail("Invalid choice, try again")
+
+
+def validate_config(cfg):
+    """Validate config has required fields."""
+    warnings = []
+
+    fqbn = cfg.get("board", {}).get("fqbn", "")
+    if not fqbn:
+        warnings.append("board.fqbn is empty (will prompt during setup)")
+
+    source = cfg.get("source", {}).get("file", "")
+    if source and not os.path.isfile(resolve_path(source)):
+        warnings.append(f"source.file not found: {source}")
+
+    lib_dir = cfg.get("libraries", {}).get("dir", "")
+    if lib_dir and not os.path.isdir(os.path.expanduser(lib_dir)):
+        warnings.append(f"libraries.dir not found: {lib_dir}")
+
+    return warnings
 
 
 def run_patching(source_file, cfg, dry_run=False):
@@ -223,7 +262,16 @@ def run_compile(cli_path, source_file, cfg):
     info(f"Output  : {output_dir}")
     print()
 
-    success, _, stderr, elapsed = run_compile_with_progress(cmd)
+    try:
+        success, _, stderr, elapsed = run_compile_with_progress(
+            cmd, source_dir=os.path.dirname(source_file)
+        )
+    except KeyboardInterrupt:
+        fail("Compilation cancelled")
+        return False
+    except Exception as e:
+        fail(f"Unexpected error: {e}")
+        return False
 
     if not success and stderr:
         print()
@@ -258,9 +306,13 @@ def main():
 
     banner()
     cfg = load_config()
-    interactive = not args.non_interactive
+    interactive = not args.non_interinteractive
 
-    # Apply CLI overrides
+    # Validate config and warn
+    warnings = validate_config(cfg)
+    for w in warnings:
+        warn(w)
+
     if args.board:
         cfg.setdefault("board", {})["fqbn"] = args.board
     if args.output:
@@ -268,13 +320,16 @@ def main():
     if args.lib_dir:
         cfg.setdefault("libraries", {})["dir"] = args.lib_dir
 
-    # Check arduino-cli
     cli_path = get_arduino_cli(cfg)
     if not cli_path:
-        fail("arduino-cli not found. Run setup.py first.")
+        fail("arduino-cli not found. Run: cesp setup")
         sys.exit(1)
 
-    # --- Source file ---
+    # Check arduino-cli is in PATH
+    if not run("which arduino-cli")[0]:
+        info("arduino-cli found but not in PATH")
+        info(f"Add to PATH: export PATH=\"$HOME/.local/bin:$PATH\"")
+
     source_file = args.source or cfg.get("source", {}).get("file", "")
     if interactive and not source_file:
         source_file = prompt_source(allow_empty=False)
@@ -282,34 +337,33 @@ def main():
             fail("No source file. Exiting.")
             sys.exit(1)
     elif source_file:
-        source_file = resolve_path(source_file)
-        if not os.path.isfile(source_file):
-            fail(f"File not found: {source_file}")
+        valid, result = validate_source(source_file)
+        if not valid:
+            fail(result)
             if interactive:
                 source_file = prompt_source(allow_empty=False)
                 if not source_file:
                     sys.exit(1)
             else:
                 sys.exit(1)
+        else:
+            source_file = result
 
     ok(f"Source: {source_file}")
 
-    # --- Platform detection ---
     detected, confidence = detect_platform(source_file)
     if detected != "unknown":
         info(f"Detected: {C.BOLD}{detected.upper()}{C.RST} ({confidence}%)")
 
-    # --- Board selection ---
     fqbn = cfg.get("board", {}).get("fqbn", "")
     if not fqbn and interactive:
         fqbn = prompt_board()
         cfg.setdefault("board", {})["fqbn"] = fqbn
     if not fqbn:
-        fail("No board FQBN. Use --board or run setup.py.")
+        fail("No board FQBN. Use --board or run: cesp setup")
         sys.exit(1)
     ok(f"Board: {fqbn}")
 
-    # --- Compatibility ---
     if detected != "unknown":
         compatible, msg = check_compatibility(source_file, fqbn)
         if compatible:
@@ -322,7 +376,6 @@ def main():
             else:
                 sys.exit(1)
 
-    # --- Steps: default is --all ---
     do_patch = not args.no_patch and not args.dry_run
     do_libs = not args.no_libs
     do_compile = not args.dry_run
@@ -333,7 +386,6 @@ def main():
     if args.all:
         do_patch = do_libs = do_compile = True
 
-    # Interactive step selection only if user explicitly excluded something
     if interactive and not (args.all or args.dry_run or args.no_patch or args.no_libs):
         section("Select steps")
         print(f"        {C.CYN}1{C.RST}. Patch source code")
@@ -350,7 +402,6 @@ def main():
         else:
             do_patch = do_libs = do_compile = True
 
-    # --- Execute ---
     results = {}
     if do_patch:
         results["patch"] = run_patching(source_file, cfg, dry_run=args.dry_run)
@@ -361,7 +412,6 @@ def main():
 
     save_config(cfg)
 
-    # --- Summary ---
     divider()
     if all(results.values()):
         print(f"  {C.GRN}{C.BOLD}  BUILD SUCCESSFUL{C.RST}")

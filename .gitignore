@@ -4,3 +4,4 @@ build/
 *.bin
 .env
 *.sqlite
+*bibz

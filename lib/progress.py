@@ -232,10 +232,19 @@ class CompileProgress:
     def __init__(self):
         self.bar = ProgressBar(total=100, label="Compiling", width=35)
         self.compiled = 0
+        self.total_size = 0
         self.mem_pct = 0
         self.current_stage = ""
         self.errors = []
         self.linked = False
+
+    def _format_size(self, b):
+        if b < 1024:
+            return f"{b}B"
+        elif b < 1024 * 1024:
+            return f"{b / 1024:.1f}KB"
+        else:
+            return f"{b / (1024 * 1024):.1f}MB"
 
     def feed_line(self, line):
         event, detail = parse_compile_line(line)
@@ -260,7 +269,8 @@ class CompileProgress:
         elif event == "compiling":
             self.compiled += 1
             pct = min(10 + self.compiled * 2, 65)
-            self.bar.update(pct, f"{self.compiled} files")
+            size_str = f" | {self._format_size(self.total_size)}" if self.total_size > 0 else ""
+            self.bar.update(pct, f"{self.compiled} files{size_str}")
 
         elif event == "cached":
             self.compiled += 1
@@ -285,7 +295,8 @@ class CompileProgress:
     def finish(self, success, elapsed=0):
         if success:
             self.bar.update(100, f"{self.compiled} files")
-            msg = f"Done in {elapsed:.1f}s | {self.compiled} files"
+            size_str = f" | {self._format_size(self.total_size)}" if self.total_size > 0 else ""
+            msg = f"Done in {elapsed:.1f}s | {self.compiled} files{size_str}"
             if self.mem_pct:
                 msg += f" | RAM: {self.mem_pct}%"
             self.bar.finish(msg)
@@ -293,9 +304,19 @@ class CompileProgress:
             self.bar.finish("Failed")
 
 
-def run_compile_with_progress(cmd, timeout=300):
+def run_compile_with_progress(cmd, timeout=300, source_dir=None):
     """Run arduino-cli compile with real progress tracking."""
     progress = CompileProgress()
+
+    # Calculate total source size
+    if source_dir and os.path.isdir(source_dir):
+        total = 0
+        for root, dirs, files in os.walk(source_dir):
+            for f in files:
+                if f.endswith(('.ino', '.cpp', '.c', '.h')):
+                    total += os.path.getsize(os.path.join(root, f))
+        progress.total_size = total
+
     progress.bar.update(0, "starting")
 
     start = time.time()
