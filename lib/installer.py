@@ -147,18 +147,24 @@ def search_lib(cli_path, name):
         return []
 
 
-def install_lib(cli_path, name, extra_index_url=""):
-    """Install a library. Returns (success, message)."""
-    idx_flag = f'--git-url "{extra_index_url}"' if extra_index_url else ''
-    out, err = run(f'"{cli_path}" lib install "{name}" {idx_flag}', timeout=180)
-    # FIX #8: Check for None output (timeout/exception) in addition to error strings
+def install_lib(cli_path, name, lib_dir="", git_url=""):
+    """Install a library. Tries arduino-cli first, falls back to git clone.
+    Returns (success, message)."""
+    out, err = run(f'"{cli_path}" lib install "{name}"', timeout=180)
     if out is None:
-        return False, err  # Timeout or exception
-    if err and "Error" in err:
-        if "already exists" in err:
-            return True, "already installed"
         return False, err
-    return True, out or "Installed"
+    if not (err and "Error" in err):
+        return True, out or "Installed"
+    if "already exists" in err:
+        return True, "already installed"
+    if git_url and lib_dir:
+        lib_path = os.path.join(lib_dir, name)
+        run(f'rm -rf "{lib_path}"', timeout=10)
+        out2, err2 = run(f'git clone --depth 1 "{git_url}" "{lib_path}"', timeout=120)
+        if os.path.isdir(lib_path):
+            return True, "installed from GitHub"
+        return False, f"arduino-cli + GitHub failed"
+    return False, err
 
 
 def install_core(cli_path, package, manager_url=""):
@@ -217,6 +223,12 @@ HEADER_TO_LIB = {
     "ESPAsyncWebServer.h": "ESPAsyncWebServer",
     "WebSocketsServer.h": "WebSocketsServer",
 }
+
+
+HEADER_TO_GIT = {
+    "WebSocketsServer.h": "https://github.com/Links2004/arduinoWebSockets.git",
+}
+
 
 # FIX #14: Removed duplicate WebServer.h entry; organized by category
 # Headers that are part of the platform core, not installable separately
@@ -375,7 +387,9 @@ def auto_install_libs(cli_path, source_file, lib_dir, extra_libs=None, extra_ind
                 to_install.add(lib)
 
     for lib_name in sorted(to_install):
-        ok, msg = install_lib(cli_path, lib_name, extra_index_url)
+        header = next((h for h, ln in HEADER_TO_LIB.items() if ln == lib_name), "")
+        git_url = HEADER_TO_GIT.get(header, "")
+        ok, msg = install_lib(cli_path, lib_name, lib_dir, git_url)
         status = "installed" if ok else f"failed: {msg}"
         results.append((lib_name, status))
 
