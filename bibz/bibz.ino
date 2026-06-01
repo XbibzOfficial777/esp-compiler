@@ -1,14 +1,4 @@
 // ==================================================
-// BIBZZ AI FLOWWW - FULL DEAUTH ATTACK + WEB PORTAL
-// Target: ESP8266 (NodeMCU, Wemos D1, etc.)
-// Fitur: 
-// - Web portal tanpa password default (bisa di-set)
-// - Scan AP sekitar
-// - Pilih target AP & channel
-// - Mulai/hentikan deauth attack (massal atau per client)
-// - Setting SSID & password hotspot ESP
-// ==================================================
-
 #include <ESP8266WiFi.h>
 #include <EEPROM.h>
 #include <ESPAsyncWebServer.h>
