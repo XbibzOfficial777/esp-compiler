@@ -274,9 +274,12 @@ def select_platform_and_board(cfg, cli_path, interactive=True):
 def setup_paths(cfg, interactive=True):
     section("Configuring paths")
 
-    lib_dir = cfg.get("libraries", {}).get("dir", str(HOME / "Arduino" / "libraries"))
+    default_lib = str(HOME / "Arduino" / "libraries")
+    lib_dir = cfg.get("libraries", {}).get("dir", "") or default_lib
     if interactive:
         lib_dir = prompt_path("Library directory", lib_dir)
+    if not lib_dir:
+        lib_dir = default_lib
     cfg.setdefault("libraries", {})["dir"] = lib_dir
     os.makedirs(lib_dir, exist_ok=True)
     ok(f"Libraries: {lib_dir}")

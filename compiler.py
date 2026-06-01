@@ -185,7 +185,7 @@ def validate_config(cfg):
     if source and not os.path.isfile(resolve_path(source)):
         warnings.append(f"source.file not found: {source}")
 
-    lib_dir = cfg.get("libraries", {}).get("dir", "")
+    lib_dir = cfg.get("libraries", {}).get("dir", "") or str(HOME / "Arduino" / "libraries")
     if lib_dir and not os.path.isdir(os.path.expanduser(lib_dir)):
         warnings.append(f"libraries.dir not found: {lib_dir}")
 
@@ -214,7 +214,7 @@ def run_patching(source_file, cfg, dry_run=False):
 
 def run_library_check(cli_path, source_file, cfg):
     section("Checking libraries")
-    lib_dir = cfg.get("libraries", {}).get("dir", str(HOME / "Arduino" / "libraries"))
+    lib_dir = cfg.get("libraries", {}).get("dir", "") or str(HOME / "Arduino" / "libraries")
     extra_libs = cfg.get("libraries", {}).get("extra", [])
     if not cfg.get("libraries", {}).get("auto_install", True):
         info("Auto-install disabled")
@@ -247,7 +247,7 @@ def run_compile(cli_path, source_file, cfg):
         fail("No board FQBN configured. Run setup.py first.")
         return False
 
-    lib_dir = cfg.get("libraries", {}).get("dir", str(HOME / "Arduino" / "libraries"))
+    lib_dir = cfg.get("libraries", {}).get("dir", "") or str(HOME / "Arduino" / "libraries")
     output_dir = cfg.get("output", {}).get("dir", "build")
     output_dir = resolve_path(output_dir)
     os.makedirs(output_dir, exist_ok=True)
