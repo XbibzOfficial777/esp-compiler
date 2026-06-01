@@ -12,7 +12,7 @@ import argparse
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from lib.installer import run, get_arduino_cli
+from lib.installer import run, get_arduino_cli, get_default_output_dir
 
 CONFIG_PATH = Path(__file__).parent / "config.json"
 HOME = Path.home()
@@ -186,12 +186,8 @@ def cleanup_all(cfg, interactive=True):
             safe_remove(d_str)
 
     section("Removing build output")
-    output_dir = cfg.get("output", {}).get("dir", "build")
-    if output_dir:
-        output_path = Path(output_dir)
-        if not output_path.is_absolute():
-            output_path = Path(__file__).parent / output_path
-        safe_remove(str(output_path))
+    output_dir = get_default_output_dir()
+    safe_remove(output_dir)
 
     section("Removing library directory (optional)")
     lib_dir = cfg.get("libraries", {}).get("dir", "")
@@ -253,12 +249,8 @@ def cleanup_all(cfg, interactive=True):
 def cleanup_build_only(cfg):
     """Remove only build artifacts."""
     section("Removing build output")
-    output_dir = cfg.get("output", {}).get("dir", "build")
-    if output_dir:
-        output_path = Path(output_dir)
-        if not output_path.is_absolute():
-            output_path = Path(__file__).parent / output_path
-        safe_remove(str(output_path))
+    output_dir = get_default_output_dir()
+    safe_remove(output_dir)
 
 
 def cleanup_libs_only(cfg, cli_path):

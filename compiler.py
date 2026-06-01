@@ -12,7 +12,8 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib.installer import (
     run, get_arduino_cli, get_installed_cores,
-    auto_install_libs, scan_includes, check_compatibility, detect_platform
+    auto_install_libs, scan_includes, check_compatibility, detect_platform,
+    get_default_output_dir
 )
 from lib.patcher import apply_patches, build_patches_from_config
 from lib.progress import (
@@ -249,8 +250,7 @@ def run_compile(cli_path, source_file, cfg, verbose=True):
         return False
 
     lib_dir = cfg.get("libraries", {}).get("dir", "") or str(HOME / "Arduino" / "libraries")
-    output_dir = cfg.get("output", {}).get("dir", "build")
-    output_dir = resolve_path(output_dir)
+    output_dir = get_default_output_dir()
 
     # Clean previous build cache to avoid stale object files
     cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "arduino", "sketches")
@@ -318,7 +318,6 @@ def main():
     parser = argparse.ArgumentParser(description="ESP8266/ESP32 Firmware Compiler")
     parser.add_argument("--source", "-s", help="Source .ino file")
     parser.add_argument("--board", "-b", help="Board FQBN")
-    parser.add_argument("--output", "-o", help="Output directory")
     parser.add_argument("--lib-dir", help="Library directory")
     parser.add_argument("--dry-run", action="store_true", help="Patch only (dry-run mode)")
     parser.add_argument("--no-patch", action="store_true", help="Skip patching")
@@ -340,8 +339,6 @@ def main():
 
     if args.board:
         cfg.setdefault("board", {})["fqbn"] = args.board
-    if args.output:
-        cfg.setdefault("output", {})["dir"] = args.output
     if args.lib_dir:
         cfg.setdefault("libraries", {})["dir"] = args.lib_dir
 

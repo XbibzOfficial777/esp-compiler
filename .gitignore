@@ -5,3 +5,4 @@ build/
 .env
 *.sqlite
 *bibz
+*auth

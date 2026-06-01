@@ -6,6 +6,13 @@ import sys
 from pathlib import Path
 
 
+def get_default_output_dir():
+    sdcard = "/sdcard"
+    if os.path.isdir(sdcard):
+        return sdcard + "/sandbox/hasil_c"
+    return os.path.join(os.path.expanduser("~"), "Downloads", "hasil_c")
+
+
 def run(cmd, check=False, capture=True, timeout=120):
     """Run a command with error handling."""
     try:
@@ -208,6 +215,7 @@ HEADER_TO_LIB = {
     "Adafruit_SSD1306.h": "Adafruit SSD1306",
     "ESPAsyncTCP.h": "ESPAsyncTCP",
     "ESPAsyncWebServer.h": "ESPAsyncWebServer",
+    "WebSocketsServer.h": "WebSocketsServer",
 }
 
 # FIX #14: Removed duplicate WebServer.h entry; organized by category
@@ -223,7 +231,7 @@ SKIPPED_LIBS = {
     # ESP8266 built-in
     "ESP8266WiFi.h", "ESP8266WebServer.h", "ESP8266HTTPClient.h",
     "ESP8266mDNS.h", "ESP8266httpUpdate.h",
-    "SoftwareSerial.h", "Hash.h", "DNSServer.h",
+    "SoftwareSerial.h", "Hash.h", "DNSServer.h", "Updater.h",
     # ESP8266/ESP32 shared built-in
     "EEPROM.h", "LittleFS.h", "FS.h", "SPI.h", "Wire.h",
     "ESPAsyncTCP.h", "ESPAsyncWebServer.h",

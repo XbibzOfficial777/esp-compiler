@@ -11,7 +11,8 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib.installer import (
     run, get_arduino_cli, get_installed_cores,
-    get_installed_libs, install_core, install_lib, auto_install_libs
+    get_installed_libs, install_core, install_lib, auto_install_libs,
+    get_default_output_dir
 )
 from lib.progress import Spinner, DownloadProgress
 
@@ -300,11 +301,8 @@ def setup_paths(cfg, interactive=True):
     else:
         info("No source file (set later)")
 
-    output_dir = cfg.get("output", {}).get("dir", "build")
-    if interactive:
-        output_dir = prompt_path("Output directory", output_dir)
-    cfg.setdefault("output", {})["dir"] = output_dir
-    ok(f"Output: {output_dir}")
+    output_dir = get_default_output_dir()
+    info(f"Output: {output_dir} (fixed path)")
     return True
 
 
@@ -352,7 +350,6 @@ def main():
     parser.add_argument("--board", help="Set board FQBN directly")
     parser.add_argument("--source", help="Set source .ino file path")
     parser.add_argument("--lib-dir", help="Set library directory")
-    parser.add_argument("--output-dir", help="Set output directory")
     parser.add_argument("--skip-install", action="store_true")
     # FIX #15: Add --platform flag for selective core installation
     parser.add_argument("--platform", help="Install specific platform core(s): esp8266, esp32, or both (default: both)")
@@ -375,8 +372,6 @@ def main():
         cfg.setdefault("source", {})["file"] = os.path.normpath(p) if os.path.isfile(p) else args.source
     if args.lib_dir:
         cfg.setdefault("libraries", {})["dir"] = args.lib_dir
-    if args.output_dir:
-        cfg.setdefault("output", {})["dir"] = args.output_dir
 
     if not args.skip_install:
         ok_cli, cli_path = setup_arduino_cli(cfg, interactive)
@@ -448,7 +443,7 @@ def main():
     print(f"  Config : {CONFIG_PATH}")
     print(f"  Board  : {cfg.get('board', {}).get('fqbn', 'not set')}")
     print(f"  Source : {cfg.get('source', {}).get('file', 'not set')}")
-    print(f"  Output : {cfg.get('output', {}).get('dir', 'build')}")
+    print(f"  Output : {get_default_output_dir()} (fixed)")
     print(f"\n  {C.GRY}Next: python3 compiler.py --source <file.ino>{C.RST}")
     divider()
     print()

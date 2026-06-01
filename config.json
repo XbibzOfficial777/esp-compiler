@@ -28,9 +28,7 @@
     "auto_install": true,
     "extra": []
   },
-  "output": {
-    "dir": "build"
-  },
+  "output": {},
   "patches": {
     "auto_fix": true,
     "rules": []
