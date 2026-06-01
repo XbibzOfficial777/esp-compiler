@@ -72,6 +72,11 @@ def info(msg):
     print(f"      {C.GRY}[~]{C.RST} {msg}")
 
 
+# FIX #1: Add missing warn() function that was called but never defined
+def warn(msg):
+    print(f"      {C.YLW}[!]{C.RST} {msg}")
+
+
 def prompt(msg, default=""):
     suffix = f" {C.GRY}({default}){C.RST}" if default else ""
     val = input(f"      {C.CYN}[?]{C.RST} {msg}{suffix}: ").strip()
@@ -236,7 +241,7 @@ def run_library_check(cli_path, source_file, cfg):
     return all_ok
 
 
-def run_compile(cli_path, source_file, cfg):
+def run_compile(cli_path, source_file, cfg, verbose=True):
     section("Compiling")
     fqbn = cfg.get("board", {}).get("fqbn", "")
     if not fqbn:
@@ -248,12 +253,22 @@ def run_compile(cli_path, source_file, cfg):
     output_dir = resolve_path(output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
+    # FIX #4: Quote the --fqbn parameter to prevent command injection
+    # Also validate FQBN format (should be vendor:arch:board)
+    import re as _re
+    if not _re.match(r'^[a-zA-Z0-9_]+:[a-zA-Z0-9_]+:[a-zA-Z0-9_]+$', fqbn):
+        fail(f"Invalid FQBN format: {fqbn} (expected vendor:arch:board)")
+        return False
+
+    # FIX #7: Only pass --verbose to arduino-cli when user requests it
+    verbose_flag = "--verbose " if verbose else ""
+
     cmd = (
         f'"{cli_path}" compile '
-        f'--fqbn {fqbn} '
+        f'--fqbn "{fqbn}" '
         f'--libraries "{lib_dir}" '
         f'--output-dir "{output_dir}" '
-        f'--verbose '
+        f'{verbose_flag}'
         f'"{source_file}"'
     )
 
@@ -296,19 +311,20 @@ def main():
     parser.add_argument("--board", "-b", help="Board FQBN")
     parser.add_argument("--output", "-o", help="Output directory")
     parser.add_argument("--lib-dir", help="Library directory")
-    parser.add_argument("--dry-run", action="store_true", help="Patch only")
+    parser.add_argument("--dry-run", action="store_true", help="Patch only (dry-run mode)")
     parser.add_argument("--no-patch", action="store_true", help="Skip patching")
     parser.add_argument("--no-libs", action="store_true", help="Skip library check")
     parser.add_argument("--non-interactive", action="store_true", help="No prompts")
     parser.add_argument("--all", "-a", action="store_true", help="All steps (default)")
-    parser.add_argument("--verbose", "-v", action="store_true")
+    # FIX #7: --verbose flag now actually controls arduino-cli verbosity
+    parser.add_argument("--verbose", "-v", action="store_true", help="Show verbose arduino-cli output")
     args = parser.parse_args()
 
     banner()
     cfg = load_config()
     interactive = not args.non_interactive
 
-    # Validate config and warn
+    # Validate config and warn (FIX #1: warn() now defined above)
     warnings = validate_config(cfg)
     for w in warnings:
         warn(w)
@@ -376,17 +392,32 @@ def main():
             else:
                 sys.exit(1)
 
-    do_patch = not args.no_patch and not args.dry_run
-    do_libs = not args.no_libs
-    do_compile = not args.dry_run
+    # FIX #2 & #18: Completely rewritten step selection logic
+    # --dry-run now runs patching in dry mode, skips libs and compile
+    # --no-patch / --no-libs are properly respected without falling through to prompt
+    do_patch = True
+    do_libs = True
+    do_compile = True
 
-    if not (args.no_patch or args.no_libs or args.dry_run):
-        do_patch = do_libs = do_compile = True
+    if args.dry_run:
+        # Dry run: run patching in dry mode, skip libs and compile
+        do_patch = True
+        do_libs = False
+        do_compile = False
+    else:
+        if args.no_patch:
+            do_patch = False
+        if args.no_libs:
+            do_libs = False
 
-    if args.all:
-        do_patch = do_libs = do_compile = True
+    # --all explicitly enables all steps (except compile in dry-run)
+    if args.all and not args.dry_run:
+        do_patch = True
+        do_libs = True
+        do_compile = True
 
-    if interactive and not (args.all or args.dry_run or args.no_patch or args.no_libs):
+    # Only show interactive step selection if no relevant flags were given
+    if interactive and not any([args.all, args.dry_run, args.no_patch, args.no_libs]):
         section("Select steps")
         print(f"        {C.CYN}1{C.RST}. Patch source code")
         print(f"        {C.CYN}2{C.RST}. Check/install libraries")
@@ -408,13 +439,16 @@ def main():
     if do_libs:
         results["libs"] = run_library_check(cli_path, source_file, cfg)
     if do_compile:
-        results["compile"] = run_compile(cli_path, source_file, cfg)
+        results["compile"] = run_compile(cli_path, source_file, cfg, verbose=args.verbose)
 
     save_config(cfg)
 
     divider()
-    if all(results.values()):
+    # FIX #17: Don't show BUILD SUCCESSFUL when no steps were executed
+    if results and all(results.values()):
         print(f"  {C.GRN}{C.BOLD}  BUILD SUCCESSFUL{C.RST}")
+    elif not results:
+        print(f"  {C.YLW}{C.BOLD}  NO STEPS EXECUTED{C.RST}")
     else:
         print(f"  {C.RED}{C.BOLD}  BUILD FAILED{C.RST}")
         for name, ok_flag in results.items():
