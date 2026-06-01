@@ -29,7 +29,7 @@
 **One command to install everything:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/XbibzOfficial/esp-compiler/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/XbibzOfficial777/esp-compiler/main/install.sh | bash
 ```
 
 **Then restart your shell:**
@@ -70,10 +70,10 @@ That's it.
 
 ```bash
 # Install (auto-detects bash/zsh, adds 'cesp' command)
-curl -fsSL https://raw.githubusercontent.com/XbibzOfficial/esp-compiler/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/XbibzOfficial777/esp-compiler/main/install.sh | bash
 
 # Uninstall (removes everything cleanly)
-curl -fsSL https://raw.githubusercontent.com/XbibzOfficial/esp-compiler/main/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/XbibzOfficial777/esp-compiler/main/uninstall.sh | bash
 ```
 
 ### Using `cesp`

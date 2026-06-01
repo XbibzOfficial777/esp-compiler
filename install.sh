@@ -6,7 +6,7 @@
 set -e
 
 # --- Config ---
-REPO="${GITHUB_REPO:-XbibzOfficial/esp-compiler}"
+REPO="${GITHUB_REPO:-XbibzOfficial777/esp-compiler}"
 BRANCH="${GIT_BRANCH:-main}"
 RAW="https://raw.githubusercontent.com/${REPO}/${BRANCH}"
 INSTALL_DIR="${ESP_COMPILER_DIR:-$HOME/.esp-compiler}"
