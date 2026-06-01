@@ -386,5 +386,3 @@ def download_with_progress(url, dest, label="Downloading"):
         proc.kill()
         progress.bar.finish("Failed")
         return False
-    finally:
-        monitor.kill()

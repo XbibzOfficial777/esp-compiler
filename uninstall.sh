@@ -97,15 +97,8 @@ main() {
     safe_rm "${INSTALL_DIR}" "Compiler directory"
 
     _log "Removing build output"
-    if [ -d "./build" ]; then
-        safe_rm "./build" "Build directory"
-    fi
-    if [ -d "./bibz" ]; then
-        if prompt_yn "Remove bibz/ source directory?" "n"; then
-            safe_rm "./bibz" "bibz directory"
-        else
-            _info "Kept: bibz/"
-        fi
+    if [ -d "${INSTALL_DIR}/build" ]; then
+        safe_rm "${INSTALL_DIR}/build" "Build directory"
     fi
 
     clean_shell

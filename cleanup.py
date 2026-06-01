@@ -134,17 +134,32 @@ def cleanup_all(cfg, interactive=True):
         else:
             safe_remove(lib_dir)
 
-    section("Cleaning .bashrc")
-    bashrc = HOME / ".bashrc"
-    if bashrc.exists():
-        content = bashrc.read_text()
-        lines = content.splitlines()
-        cleaned = [l for l in lines if "export PATH=$PATH:$HOME/.local/bin" not in l]
-        if len(cleaned) < len(lines):
-            bashrc.write_text("\n".join(cleaned) + "\n")
-            ok("Cleaned PATH entry from ~/.bashrc")
-        else:
-            info("No PATH entry to clean")
+    section("Cleaning shell config")
+    marker = "# ESP-Compiler (XbibzOfficial)"
+    cleaned_any = False
+    for rc_name in [".bashrc", ".zshrc", ".profile"]:
+        rc = HOME / rc_name
+        if rc.exists() and marker in rc.read_text():
+            lines = rc.read_text().splitlines()
+            new_lines = []
+            skip = False
+            for line in lines:
+                if marker in line:
+                    skip = True
+                    continue
+                if skip and "# End ESP-Compiler" in line:
+                    skip = False
+                    continue
+                if not skip:
+                    new_lines.append(line)
+            rc.write_text("\n".join(new_lines) + "\n")
+            ok(f"Cleaned: ~/{rc_name}")
+            cleaned_any = True
+    if not cleaned_any:
+        info("No shell config entries found")
+
+    # Remove cesp binary
+    safe_remove(str(HOME / ".local" / "bin" / "cesp"), "cesp binary")
 
     section("Removing config file")
     if interactive:
@@ -154,7 +169,7 @@ def cleanup_all(cfg, interactive=True):
         safe_remove(str(CONFIG_PATH))
 
     section("Removing old compiler artifacts")
-    old_files = ["compile.sh", "uninstall.sh"]
+    old_files = ["compile.sh"]
     for s in old_files:
         p = Path(__file__).parent / s
         if p.exists():
