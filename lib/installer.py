@@ -157,11 +157,11 @@ def install_lib(cli_path, name, extra_index_url=""):
 def install_core(cli_path, package, manager_url=""):
     """Install a board core. Returns (success, message)."""
     # FIX #3: Don't overwrite existing config; use config init without --overwrite,
-    # and use 'add' instead of 'set' so multiple URLs accumulate
+    # and use 'add' instead of 'set' so multiple URLs accumulate.
+    # Only run 'config init' if no config file exists yet.
     out, err = run(
         f'"{cli_path}" config init 2>/dev/null; '
         f'"{cli_path}" config add board_manager.additional_urls "{manager_url}" 2>/dev/null; '
-        f'"{cli_path}" config set board_manager.additional_urls "{manager_url}" 2>/dev/null; '
         f'"{cli_path}" core update-index && '
         f'"{cli_path}" core install "{package}"',
         timeout=300

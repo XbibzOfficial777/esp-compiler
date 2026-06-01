@@ -56,9 +56,22 @@ prompt_yn() {
 
 safe_rm() {
     local target="$1" label="${2:-$1}"
+    # SAFETY: Never delete protected paths (/sdcard, /storage, etc.)
+    case "$target" in
+        /sdcard|/sdcard/*|/storage|/storage/*|/mnt|/mnt/*|/|/home|/root|/tmp)
+            _fail "BLOCKED: Refusing to delete protected path: ${label}"
+            return 1
+            ;;
+    esac
     if [ -e "$target" ] || [ -L "$target" ]; then
-        rm -rf "$target"
-        _ok "Removed: ${label}"
+        # SAFETY: If target is a symlink, remove the link only — NOT its target
+        if [ -L "$target" ]; then
+            rm -f "$target"  # rm -f on symlink removes the link, not the target
+            _ok "Removed: ${label} (symlink)"
+        else
+            rm -rf "$target"
+            _ok "Removed: ${label}"
+        fi
     else
         _info "Not found: ${label}"
     fi
