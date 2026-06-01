@@ -33,13 +33,16 @@ _banner() {
     local w; w=$(_c w)
     local d; d=$(_c d)
     printf '\n'
-    printf '  %s============================================================%s\n' "$c" "$x"
-    printf '  %s  ___ ____   ___        __  _  _  ___ _____ ___             %s\n' "$c" "$x"
-    printf '  %s | __|  _ \\ / _ \\      / / | \\| |/ _ \\_   _|_ _|  %s%sXbibz Official%s%s\n' "$c" "$x" "$w" "$c" "$x"
-    printf '  %s | _|| |_) | | | |    / /  | .` | (_) || |  | |             %s\n' "$c" "$x"
-    printf '  %s |___|____/|___/|_|  /_/   |_|\\_|\\___/ |_| |___|             %s\n' "$c" "$x"
+    printf '  %s                           (                             %s\n' "$c" "$x"
+    printf '  %s                           )\\           )          (   )\\   (   (    %s\n' "$c" "$x"
+    printf '  %s                        (((_)   (     (     `  )  )\\ ((_) ))\\  )(   %s\n' "$c" "$x"
+    printf '  %s                        )\\___   )\\    )\\  %s /(/( ((_) _  /((_)(()%s\\  %s\n' "$c" "$c" "$x" "$c"
+    printf '  %s                       ((/ __| ((_) _((_)) ((_)\\_ (_)| |(_))   ((_) %s\n' "$c" "$x"
+    printf '  %s                        | (__ / _ \\| %s\\()| _\\ \\)| || |/ -_) | %s_|  %s\n' "$c" "$w" "$x" "$w" "$x"
+    printf '  %s                         \\___|\\___/|_|_|_| | .__/ |_|_|\\___| |_|    %s\n' "$c" "$x"
+    printf '  %s                                           |_|         %s%sXbibz Official%s  %s\n' "$c" "$x" "$w" "$c" "$x"
     printf '  %s                                                            %s\n' "$c" "$x"
-    printf '  %s  ESP8266 / ESP32  Firmware Compiler  v2.0                 %s\n' "$c" "$x"
+    printf '  %s  %sESP8266 / ESP32  Firmware Compiler  v2.0%s                %s\n' "$c" "$d" "$x" "$c" "$x"
     printf '  %s============================================================%s\n' "$c" "$x"
     printf '\n'
 }
