@@ -41,7 +41,7 @@ _log()  { printf '  %s[>]%s %s\n' "$(_c y)" "$(_c x)" "$1"; }
 _ok()   { printf '      %s[+]%s %s\n' "$(_c g)" "$(_c x)" "$1"; }
 _fail() { printf '      %s[-]%s %s\n' "$(_c r)" "$(_c x)" "$1"; }
 _info() { printf '      %s[~]%s %s\n' "$(_c d)" "$(_c x)" "$1"; }
-_div()  { printf '  %s%s%s\n' "$(_c d)" "$(printf '─%.0s' {1..60})' "$(_c x)"; }
+_div()  { printf '  %s%s%s\n' "$(_c d)" "$(printf '─%.0s' {1..60})" "$(_c x)"; }
 
 _spinner() {
     local pid=$1 msg=$2
