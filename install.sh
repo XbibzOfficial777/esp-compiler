@@ -159,7 +159,7 @@ cesp() {
     local cmd="\$1"; shift
     case "\$cmd" in
         setup|s)    python3 "${INSTALL_DIR}/setup.py" "\$@";;
-        compile|c)  python3 "${INSTALL_DIR}/compiler.py" "\$@";;
+        compile|c)  python3 "${INSTALL_DIR}/compiler.py" --source "\$@";;
         clean)      python3 "${INSTALL_DIR}/cleanup.py" "\$@";;
         help|h)     echo "Usage: cesp [setup|compile|clean|uninstall] [flags]";;
         uninstall)  bash "${INSTALL_DIR}/uninstall.sh";;
@@ -178,7 +178,7 @@ COMPILER_DIR="${ESP_COMPILER_DIR:-$HOME/.esp-compiler}"
 cmd="$1"; shift
 case "$cmd" in
     setup|s)    python3 "${COMPILER_DIR}/setup.py" "$@";;
-    compile|c)  python3 "${COMPILER_DIR}/compiler.py" "$@";;
+    compile|c)  python3 "${COMPILER_DIR}/compiler.py" --source "$@";;
     clean)      python3 "${COMPILER_DIR}/cleanup.py" "$@";;
     help|h)     echo "Usage: cesp [setup|compile|clean|uninstall] [flags]";;
     uninstall)  bash "${COMPILER_DIR}/uninstall.sh";;

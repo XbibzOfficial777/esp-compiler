@@ -221,17 +221,24 @@ SKIPPED_LIBS = {
     "string.h", "stdio.h", "stdlib.h", "math.h",
     "ctype.h", "inttypes.h", "stdint.h",
     # ESP8266 built-in
-    "ESP8266WiFi.h", "ESP8266WebServer.h", "ESP8266mDNS.h",
-    "SoftwareSerial.h", "Hash.h",
+    "ESP8266WiFi.h", "ESP8266WebServer.h", "ESP8266HTTPClient.h",
+    "ESP8266mDNS.h", "ESP8266httpUpdate.h",
+    "SoftwareSerial.h", "Hash.h", "DNSServer.h",
     # ESP8266/ESP32 shared built-in
     "EEPROM.h", "LittleFS.h", "FS.h", "SPI.h", "Wire.h",
-    "WebServer.h", "Update.h", "HTTPClient.h", "HTTPUpdate.h",
-    "ArduinoOTA.h",
+    "ESPAsyncTCP.h", "ESPAsyncWebServer.h",
     # ESP32 built-in
     "WiFi.h", "WiFiClient.h", "WiFiServer.h", "WiFiUdp.h",
+    "WiFiClientSecure.h", "WiFiAP.h", "WiFiScan.h",
     "BluetoothSerial.h", "ESP.h", "esp_wifi.h", "esp_event.h",
+    "esp_system.h", "esp_task_wdt.h", "esp_timer.h",
     "driver/gpio.h", "driver/uart.h", "soc/soc.h",
-    "ESPmDNS.h", "Preferences.h",
+    "Update.h", "WebServer.h", "HTTPClient.h", "HTTPUpdate.h",
+    "ArduinoOTA.h", "ESPmDNS.h", "Preferences.h",
+    "AsyncTCP.h",
+    # System / framework headers
+    "lwip/napt.h", "lwip/apps/smtp.h", "lwip/sockets.h",
+    "napt.h",
 }
 
 
@@ -243,7 +250,7 @@ def resolve_lib_name(header):
         return None
     if header in HEADER_TO_LIB:
         return HEADER_TO_LIB[header]
-    # Unknown header — likely a project-local file, skip it
+    # FIX #11: Unknown header — likely a project-local file, skip it
     # Users can add custom libraries via config.json -> libraries.extra
     return None
 

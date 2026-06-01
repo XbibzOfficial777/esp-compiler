@@ -280,9 +280,12 @@ def select_platform_and_board(cfg, cli_path, interactive=True):
 def setup_paths(cfg, interactive=True):
     section("Configuring paths")
 
-    lib_dir = cfg.get("libraries", {}).get("dir", str(HOME / "Arduino" / "libraries"))
+    default_lib = str(HOME / "Arduino" / "libraries")
+    lib_dir = cfg.get("libraries", {}).get("dir", "") or default_lib
     if interactive:
         lib_dir = prompt_path("Library directory", lib_dir)
+    if not lib_dir:
+        lib_dir = default_lib
     cfg.setdefault("libraries", {})["dir"] = lib_dir
     os.makedirs(lib_dir, exist_ok=True)
     ok(f"Libraries: {lib_dir}")
@@ -383,26 +386,39 @@ def main():
         save_config(cfg)
 
         # FIX #15: Allow user to choose which cores to install
-        # Previously forced both ESP8266 and ESP32; now respects --platform flag
+        # Supports --platform flag, source file detection, and interactive choice
         install_esp8266 = True
         install_esp32 = True
 
         platform_choice = args.platform or ""
-        if interactive and not platform_choice:
-            section("Select platform cores to install")
-            print(f"        {C.CYN}1{C.RST}. ESP8266 only")
-            print(f"        {C.CYN}2{C.RST}. ESP32 only")
-            print(f"        {C.CYN}3{C.RST}. Both (recommended)")
-            choice = prompt("Choice", "3")
-            if choice == "1":
-                install_esp8266, install_esp32 = True, False
-            elif choice == "2":
-                install_esp8266, install_esp32 = False, True
-            else:
-                install_esp8266, install_esp32 = True, True
-        elif platform_choice:
+        if platform_choice:
+            # --platform flag takes priority
             install_esp8266 = platform_choice in ("esp8266", "both")
             install_esp32 = platform_choice in ("esp32", "both")
+        else:
+            # Try source file detection first
+            source_file = cfg.get("source", {}).get("file", "")
+            if source_file and os.path.isfile(source_file):
+                from lib.installer import detect_platform
+                detected, _ = detect_platform(source_file)
+                if detected == "esp32":
+                    install_esp8266, install_esp32 = False, True
+                elif detected == "esp8266":
+                    install_esp8266, install_esp32 = True, False
+                else:
+                    install_esp8266, install_esp32 = True, True
+            elif interactive:
+                section("Select platform cores to install")
+                print(f"        {C.CYN}1{C.RST}. ESP8266 only")
+                print(f"        {C.CYN}2{C.RST}. ESP32 only")
+                print(f"        {C.CYN}3{C.RST}. Both (recommended)")
+                choice = prompt("Choice", "3")
+                if choice == "1":
+                    install_esp8266, install_esp32 = True, False
+                elif choice == "2":
+                    install_esp8266, install_esp32 = False, True
+                else:
+                    install_esp8266, install_esp32 = True, True
 
         if install_esp8266:
             setup_core(cfg, cli_path, "esp8266", interactive)

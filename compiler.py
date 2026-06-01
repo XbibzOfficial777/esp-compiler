@@ -186,7 +186,7 @@ def validate_config(cfg):
     if source and not os.path.isfile(resolve_path(source)):
         warnings.append(f"source.file not found: {source}")
 
-    lib_dir = cfg.get("libraries", {}).get("dir", "")
+    lib_dir = cfg.get("libraries", {}).get("dir", "") or str(HOME / "Arduino" / "libraries")
     if lib_dir and not os.path.isdir(os.path.expanduser(lib_dir)):
         warnings.append(f"libraries.dir not found: {lib_dir}")
 
@@ -215,7 +215,7 @@ def run_patching(source_file, cfg, dry_run=False):
 
 def run_library_check(cli_path, source_file, cfg):
     section("Checking libraries")
-    lib_dir = cfg.get("libraries", {}).get("dir", str(HOME / "Arduino" / "libraries"))
+    lib_dir = cfg.get("libraries", {}).get("dir", "") or str(HOME / "Arduino" / "libraries")
     extra_libs = cfg.get("libraries", {}).get("extra", [])
     if not cfg.get("libraries", {}).get("auto_install", True):
         info("Auto-install disabled")
@@ -248,9 +248,18 @@ def run_compile(cli_path, source_file, cfg, verbose=True):
         fail("No board FQBN configured. Run setup.py first.")
         return False
 
-    lib_dir = cfg.get("libraries", {}).get("dir", str(HOME / "Arduino" / "libraries"))
+    lib_dir = cfg.get("libraries", {}).get("dir", "") or str(HOME / "Arduino" / "libraries")
     output_dir = cfg.get("output", {}).get("dir", "build")
     output_dir = resolve_path(output_dir)
+
+    # Clean previous build cache to avoid stale object files
+    cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "arduino", "sketches")
+    if os.path.isdir(cache_dir):
+        import shutil
+        shutil.rmtree(cache_dir, ignore_errors=True)
+    if os.path.isdir(output_dir):
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)
     os.makedirs(output_dir, exist_ok=True)
 
     # FIX #4: Quote the --fqbn parameter to prevent command injection
@@ -445,10 +454,10 @@ def main():
 
     divider()
     # FIX #17: Don't show BUILD SUCCESSFUL when no steps were executed
-    if results and all(results.values()):
-        print(f"  {C.GRN}{C.BOLD}  BUILD SUCCESSFUL{C.RST}")
-    elif not results:
+    if not results:
         print(f"  {C.YLW}{C.BOLD}  NO STEPS EXECUTED{C.RST}")
+    elif all(results.values()):
+        print(f"  {C.GRN}{C.BOLD}  BUILD SUCCESSFUL{C.RST}")
     else:
         print(f"  {C.RED}{C.BOLD}  BUILD FAILED{C.RST}")
         for name, ok_flag in results.items():
