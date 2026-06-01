@@ -306,7 +306,7 @@ def main():
 
     banner()
     cfg = load_config()
-    interactive = not args.non_interinteractive
+    interactive = not args.non_interactive
 
     # Validate config and warn
     warnings = validate_config(cfg)

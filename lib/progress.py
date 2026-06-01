@@ -331,8 +331,7 @@ def run_compile_with_progress(cmd, timeout=300, source_dir=None):
         )
 
         for line in proc.stdout:
-            if not progress.feed_line(line.rstrip()):
-                break
+            progress.feed_line(line.rstrip())
 
         proc.wait(timeout=timeout)
         elapsed = time.time() - start
@@ -360,15 +359,6 @@ def download_with_progress(url, dest, label="Downloading"):
 
     proc = subprocess.Popen(
         ['curl', '-fsSL', '-o', dest, '-w', '%{size_download}', url],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-
-    size_file = dest + ".size"
-    monitor = subprocess.Popen(
-        ['bash', '-c', f'while [ -f "{dest}" ] && ! kill -0 {proc.pid} 2>/dev/null; do '
-         f'stat --printf="%s" "{dest}" 2>/dev/null || echo 0; sleep 0.3; done'],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True

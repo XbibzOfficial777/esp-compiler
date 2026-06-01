@@ -1,6 +1,6 @@
 {
   "arduino_cli": {
-    "path": "/root/.local/bin/arduino-cli",
+    "path": "",
     "auto_install": true
   },
   "platforms": {
@@ -16,15 +16,15 @@
     }
   },
   "board": {
-    "fqbn": "esp8266:esp8266:generic",
+    "fqbn": "",
     "auto_detect": true
   },
   "source": {
-    "file": "/storage/self/primary/sandbox/compiler/bibz/bibz.ino",
+    "file": "",
     "dir": ""
   },
   "libraries": {
-    "dir": "/root/Arduino/libraries",
+    "dir": "",
     "auto_install": true,
     "extra": []
   },

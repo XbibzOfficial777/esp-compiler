@@ -59,7 +59,8 @@ check_python() {
             local major minor
             major=$(echo "$v" | cut -d. -f1)
             minor=$(echo "$v" | cut -d. -f2)
-            if [ "$major" -ge 3 ] && [ "$minor" -ge 8 ]; then
+            # Python 3.8+ or Python 4+
+            if [ "$major" -ge 4 ] || { [ "$major" -ge 3 ] && [ "$minor" -ge 8 ]; }; then
                 PYTHON="$p"
                 _ok "Python ${v}"
                 return 0
@@ -107,7 +108,18 @@ install_arduino_cli() {
 
     local tmpsh
     tmpsh=$(mktemp)
-    curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh -o "$tmpsh" 2>/dev/null
+    if ! curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh -o "$tmpsh" 2>/dev/null; then
+        _fail "Failed to download arduino-cli installer"
+        rm -f "$tmpsh"
+        return 1
+    fi
+
+    # Validate downloaded file is not empty
+    if [ ! -s "$tmpsh" ]; then
+        _fail "Downloaded installer is empty"
+        rm -f "$tmpsh"
+        return 1
+    fi
 
     # Run install silently
     BINDIR="${BIN_DIR}" bash "$tmpsh" >/dev/null 2>&1 &
