@@ -250,6 +250,15 @@ def run_compile(cli_path, source_file, cfg):
     lib_dir = cfg.get("libraries", {}).get("dir", "") or str(HOME / "Arduino" / "libraries")
     output_dir = cfg.get("output", {}).get("dir", "build")
     output_dir = resolve_path(output_dir)
+
+    # Clean previous build cache to avoid stale object files
+    cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "arduino", "sketches")
+    if os.path.isdir(cache_dir):
+        import shutil
+        shutil.rmtree(cache_dir, ignore_errors=True)
+    if os.path.isdir(output_dir):
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)
     os.makedirs(output_dir, exist_ok=True)
 
     cmd = (
