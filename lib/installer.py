@@ -207,15 +207,24 @@ SKIPPED_LIBS = {
     "avr/pgmspace.h", "avr/interrupt.h", "avr/wdt.h",
     "string.h", "stdio.h", "stdlib.h", "math.h",
     "ctype.h", "inttypes.h", "stdint.h",
-    "ESP8266WiFi.h", "ESP8266WebServer.h",
+    # ESP8266 built-in
+    "ESP8266WiFi.h", "ESP8266WebServer.h", "ESP8266HTTPClient.h",
+    "ESP8266mDNS.h", "ESP8266httpUpdate.h",
     "EEPROM.h", "LittleFS.h", "FS.h", "SPI.h", "Wire.h",
-    "SoftwareSerial.h", "ESP8266mDNS.h", "Hash.h",
+    "SoftwareSerial.h", "Hash.h", "DNSServer.h",
+    "ESPAsyncTCP.h", "ESPAsyncWebServer.h",
     # ESP32 built-in
     "WiFi.h", "WiFiClient.h", "WiFiServer.h", "WiFiUdp.h",
+    "WiFiClientSecure.h", "WiFiAP.h", "WiFiScan.h",
     "BluetoothSerial.h", "ESP.h", "esp_wifi.h", "esp_event.h",
+    "esp_system.h", "esp_task_wdt.h", "esp_timer.h",
     "driver/gpio.h", "driver/uart.h", "soc/soc.h",
     "Update.h", "WebServer.h", "HTTPClient.h", "HTTPUpdate.h",
     "ArduinoOTA.h", "ESPmDNS.h", "Preferences.h",
+    "AsyncTCP.h",
+    # System / framework headers
+    "lwip/napt.h", "lwip/apps/smtp.h", "lwip/sockets.h",
+    "napt.h",
 }
 
 
