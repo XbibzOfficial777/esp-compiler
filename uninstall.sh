@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 #  ESP32 / ESP8266 Firmware Compiler - Uninstaller
-#  curl -fsSL https://raw.githubusercontent.com/XbibzOfficial/esp-compiler/main/uninstall.sh | bash
+#  curl -fsSL https://raw.githubusercontent.com/XbibzOfficial777/esp-compiler/main/uninstall.sh | bash
 # ============================================================
 set -e
 

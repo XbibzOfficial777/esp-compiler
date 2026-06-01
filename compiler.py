@@ -72,6 +72,10 @@ def info(msg):
     print(f"      {C.GRY}[~]{C.RST} {msg}")
 
 
+def warn(msg):
+    print(f"      {C.YLW}[!]{C.RST} {msg}")
+
+
 def prompt(msg, default=""):
     suffix = f" {C.GRY}({default}){C.RST}" if default else ""
     val = input(f"      {C.CYN}[?]{C.RST} {msg}{suffix}: ").strip()
@@ -250,7 +254,7 @@ def run_compile(cli_path, source_file, cfg):
 
     cmd = (
         f'"{cli_path}" compile '
-        f'--fqbn {fqbn} '
+        f'--fqbn "{fqbn}" '
         f'--libraries "{lib_dir}" '
         f'--output-dir "{output_dir}" '
         f'--verbose '
@@ -301,7 +305,6 @@ def main():
     parser.add_argument("--no-libs", action="store_true", help="Skip library check")
     parser.add_argument("--non-interactive", action="store_true", help="No prompts")
     parser.add_argument("--all", "-a", action="store_true", help="All steps (default)")
-    parser.add_argument("--verbose", "-v", action="store_true")
     args = parser.parse_args()
 
     banner()
@@ -376,7 +379,7 @@ def main():
             else:
                 sys.exit(1)
 
-    do_patch = not args.no_patch and not args.dry_run
+    do_patch = not args.no_patch
     do_libs = not args.no_libs
     do_compile = not args.dry_run
 
@@ -413,7 +416,9 @@ def main():
     save_config(cfg)
 
     divider()
-    if all(results.values()):
+    if not results:
+        print(f"  {C.YLW}{C.BOLD}  NO STEPS EXECUTED{C.RST}")
+    elif all(results.values()):
         print(f"  {C.GRN}{C.BOLD}  BUILD SUCCESSFUL{C.RST}")
     else:
         print(f"  {C.RED}{C.BOLD}  BUILD FAILED{C.RST}")

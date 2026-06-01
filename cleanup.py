@@ -80,7 +80,11 @@ def safe_remove(path, label=""):
     """Remove file or directory safely."""
     target = label or path
     try:
-        if os.path.isfile(path) or os.path.islink(path):
+        if os.path.islink(path):
+            os.remove(path)
+            ok(f"Removed symlink: {target}")
+            return True
+        elif os.path.isfile(path):
             os.remove(path)
             ok(f"Removed: {target}")
             return True
@@ -188,10 +192,18 @@ def cleanup_build_only(cfg):
 
 
 def cleanup_libs_only(cfg, cli_path):
-    """Remove installed libraries."""
-    section("Removing libraries")
+    """Remove only auto-installed libraries (not the entire directory)."""
+    section("Removing auto-installed libraries")
     lib_dir = cfg.get("libraries", {}).get("dir", str(HOME / "Arduino" / "libraries"))
-    safe_remove(lib_dir)
+    if not os.path.isdir(lib_dir):
+        info("Library directory not found")
+        return
+    # Only remove if it's within the INSTALL_DIR, never remove ~/Arduino/libraries
+    if "Arduino" in lib_dir:
+        info("Skipping - would remove shared Arduino libraries")
+        info("Use 'arduino-cli lib uninstall <name>' to remove specific libraries")
+    else:
+        safe_remove(lib_dir)
 
 
 def main():

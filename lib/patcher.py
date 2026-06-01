@@ -6,7 +6,7 @@ DEFAULT_PATCHES = [
     {
         "id": "eeprom_include",
         "description": "Insert #include <EEPROM.h> after first WiFi include",
-        "pattern": r"(#include\s*<ESP8266WiFi\.h>)",
+        "pattern": r"(#include\s*<(?:ESP8266)?WiFi\.h>)",
         "insert_after": '\n#include <EEPROM.h>',
         "check": r"#include\s*<EEPROM\.h>",
         "auto": True
@@ -72,7 +72,7 @@ def apply_patches(source_file, patches=None, dry_run=False):
                 results.append((pid, False, "Pattern not found, already fixed"))
 
         elif "check" in patch and "pattern" in patch and "insert_after" in patch:
-            if re.search(patch["check"], content):
+            if patch.get("check") and re.search(patch["check"], content):
                 results.append((pid, False, "Already present"))
             else:
                 m = re.search(patch["pattern"], content)
@@ -105,6 +105,8 @@ def apply_patches(source_file, patches=None, dry_run=False):
             results.append((pid, False, "Unknown patch format"))
 
     if content != original and not dry_run:
+        backup_path = source_file + ".bak"
+        write_file(backup_path, original)
         write_file(source_file, content)
 
     return results

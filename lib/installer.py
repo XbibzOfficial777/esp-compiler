@@ -154,14 +154,14 @@ def install_lib(cli_path, name, extra_index_url=""):
 def install_core(cli_path, package, manager_url=""):
     """Install a board core. Returns (success, message)."""
     out, err = run(
-        f'"{cli_path}" config init --overwrite && '
+        f'"{cli_path}" config init 2>/dev/null || true && '
         f'"{cli_path}" config set board_manager.additional_urls "{manager_url}" && '
         f'"{cli_path}" core update-index && '
         f'"{cli_path}" core install {package}',
         timeout=300
     )
-    if err and "Error" in err:
-        return False, err
+    if out is None or (err and "Error" in err):
+        return False, err or "Command failed"
     return True, "Core installed"
 
 
@@ -207,7 +207,7 @@ SKIPPED_LIBS = {
     "avr/pgmspace.h", "avr/interrupt.h", "avr/wdt.h",
     "string.h", "stdio.h", "stdlib.h", "math.h",
     "ctype.h", "inttypes.h", "stdint.h",
-    "ESP8266WiFi.h", "ESP8266WebServer.h", "WebServer.h",
+    "ESP8266WiFi.h", "ESP8266WebServer.h",
     "EEPROM.h", "LittleFS.h", "FS.h", "SPI.h", "Wire.h",
     "SoftwareSerial.h", "ESP8266mDNS.h", "Hash.h",
     # ESP32 built-in
@@ -226,6 +226,15 @@ def resolve_lib_name(header):
     if header in HEADER_TO_LIB:
         return HEADER_TO_LIB[header]
     base = header.replace(".h", "").replace(".hpp", "")
+    skip_patterns = [
+        "config", "utils", "types", "defines", "globals", "common",
+        "debug", "helpers", "platform", "hardware", "io", "pin",
+        "settings", "constants", "macros", "errors", "logging",
+    ]
+    if base.lower() in skip_patterns:
+        return None
+    if not base[0].isupper() and "_" not in base:
+        return None
     return base
 
 
@@ -237,7 +246,6 @@ def resolve_lib_name(header):
 ESP8266_HEADERS = {
     "ESP8266WiFi.h", "ESP8266WebServer.h", "ESP8266HTTPClient.h",
     "ESP8266mDNS.h", "ESP8266httpUpdate.h",
-    "ESPAsyncTCP.h", "ESPAsyncWebServer.h",
 }
 
 # ESP32-specific headers
