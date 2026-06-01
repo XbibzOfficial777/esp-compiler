@@ -3,7 +3,6 @@
 #  ESP8266 / ESP32 Firmware Compiler - Installer
 #  curl -fsSL https://raw.githubusercontent.com/XbibzOfficial777/esp-compiler/main/install.sh | bash
 # ============================================================
-set -e
 
 REPO="${GITHUB_REPO:-XbibzOfficial777/esp-compiler}"
 BRANCH="${GIT_BRANCH:-main}"
@@ -11,7 +10,6 @@ RAW="https://raw.githubusercontent.com/${REPO}/${BRANCH}"
 INSTALL_DIR="${ESP_COMPILER_DIR:-$HOME/.esp-compiler}"
 BIN_DIR="${HOME}/.local/bin"
 
-# --- Colors ---
 _c() {
     case "$1" in
         r) printf '\033[1;31m';;  g) printf '\033[1;32m';;  y) printf '\033[1;33m';;
@@ -40,17 +38,6 @@ _ok()   { printf '      %s[+]%s %s\n' "$(_c g)" "$(_c x)" "$1"; }
 _fail() { printf '      %s[-]%s %s\n' "$(_c r)" "$(_c x)" "$1"; }
 _info() { printf '      %s[~]%s %s\n' "$(_c d)" "$(_c x)" "$1"; }
 _div()  { printf '  %s%s%s\n' "$(_c d)" "$(printf '─%.0s' {1..60})" "$(_c x)"; }
-
-_spinner() {
-    local pid=$1 msg=$2
-    local sp='|/-\'
-    local i=0
-    while kill -0 "$pid" 2>/dev/null; do
-        printf "\r      %s%s%s %s" "$(_c c)" "${sp:i++%${#sp}:1}" "$(_c x)" "$msg"
-        sleep 0.1
-    done
-    printf "\r\033[2K"
-}
 
 detect_shell() {
     local name
@@ -93,7 +80,7 @@ download_files() {
         "compiler.py" "cleanup.py" "install.sh" "uninstall.sh"
     )
 
-    local ok=0 fail=0
+    local ok=0
     for f in "${files[@]}"; do
         local target="${INSTALL_DIR}/${f}"
         mkdir -p "$(dirname "$target")"
@@ -101,13 +88,11 @@ download_files() {
             ok=$((ok + 1))
         else
             _fail "Failed: ${f}"
-            fail=$((fail + 1))
         fi
     done
 
     chmod +x "${INSTALL_DIR}/install.sh" "${INSTALL_DIR}/uninstall.sh" 2>/dev/null || true
-    _ok "Downloaded ${ok} files" 
-    [ "$fail" -gt 0 ] && _fail "${fail} files failed"
+    _ok "Downloaded ${ok} files"
 }
 
 install_arduino_cli() {
@@ -120,19 +105,26 @@ install_arduino_cli() {
     _log "Installing arduino-cli"
     mkdir -p "${BIN_DIR}"
 
-    # Download in background, show spinner
     local tmpsh
     tmpsh=$(mktemp)
     curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh -o "$tmpsh" 2>/dev/null
 
-    BINDIR="${BIN_DIR}" bash "$tmpsh" &>/dev/null &
+    # Run install silently
+    BINDIR="${BIN_DIR}" bash "$tmpsh" >/dev/null 2>&1 &
     local pid=$!
-    _spinner "$pid" "Installing arduino-cli..."
-    wait "$pid"
-    local rc=$?
+
+    # Spinner while waiting
+    local sp='|/-\'
+    local i=0
+    while kill -0 "$pid" 2>/dev/null; do
+        printf "\r      %s%s%s Installing arduino-cli..." "$(_c c)" "${sp:i++%${#sp}:1}" "$(_c x)"
+        sleep 0.1
+    done
+    wait "$pid" 2>/dev/null
+    printf "\r\033[2K"
     rm -f "$tmpsh"
 
-    if [ "$rc" -eq 0 ] && [ -f "${BIN_DIR}/arduino-cli" ]; then
+    if [ -f "${BIN_DIR}/arduino-cli" ]; then
         _ok "arduino-cli installed"
     else
         _fail "arduino-cli install failed"
@@ -167,7 +159,6 @@ EOF
         _ok "Added cesp command"
     fi
 
-    # Binary shortcut
     mkdir -p "${BIN_DIR}"
     cat > "${BIN_DIR}/cesp" << 'BIN'
 #!/bin/bash
@@ -191,20 +182,30 @@ main() {
     detect_shell
     check_python || exit 1
     download_files
-    install_arduino_cli || exit 1
+    install_arduino_cli || true
     setup_shell
 
+    echo
     _div
     printf '  %s%s  INSTALLATION COMPLETE%s\n\n' "$(_c g)" "$(_c w)" "$(_c x)"
-    printf '  %sQuick Start:%s\n' "$(_c w)" "$(_c x)"
-    printf '    %scesp setup%s              # Interactive setup\n' "$(_c c)" "$(_c x)"
-    printf '    %scesp compile firmware.ino%s   # Compile\n' "$(_c c)" "$(_c x)"
-    printf '    %scesp help%s               # All commands\n' "$(_c c)" "$(_c x)"
-    printf '\n  %sRestart shell:%s  %ssource %s%s\n\n' "$(_c w)" "$(_c x)" "$(_c c)" "$SHELL_RC" "$(_c x)"
+
+    printf '  %sUsage:%s\n' "$(_c w)" "$(_c x)"
+    printf '    %scesp setup%s                  # First-time setup\n' "$(_c c)" "$(_c x)"
+    printf '    %scesp compile firmware.ino%s   # Compile firmware\n' "$(_c c)" "$(_c x)"
+    printf '    %scesp compile firmware.ino --board esp32:esp32:esp32%s\n' "$(_c c)" "$(_c x)"
+    printf '    %scesp clean%s                  # Cleanup build files\n' "$(_c c)" "$(_c x)"
+    printf '    %scesp help%s                   # Show all commands\n' "$(_c c)" "$(_c x)"
+    printf '    %scesp uninstall%s              # Remove compiler\n' "$(_c c)" "$(_c x)"
+
+    printf '\n  %sNext steps:%s\n' "$(_c w)" "$(_c x)"
+    printf '    1. %ssource %s%s\n' "$(_c c)" "$SHELL_RC" "$(_c x)"
+    printf '    2. %scesp setup%s\n' "$(_c c)" "$(_c x)"
+    printf '    3. %scesp compile your_firmware.ino%s\n\n' "$(_c c)" "$(_c x)"
+
     _div
     printf '  %sSource Code By : %sXbibz Official%s\n' "$(_c d)" "$(_c w)" "$(_c x)"
     _div
-    printf '\n'
+    echo
 }
 
 main "$@"
