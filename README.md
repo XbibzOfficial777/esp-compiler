@@ -1,17 +1,17 @@
 <p align="center">
-  <br>
+  <a href="https://t.me/xbibzofc">
+    <img src="https://i.vgy.me/xet21F.jpg" alt="ESP Compiler Banner" width="100%">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://t.me/xbibzofc">
+    <img src="https://img.shields.io/badge/Telegram-t.me%2Fxbibzofc-26A5E4?style=for-the-badge&logo=telegram" alt="Telegram">
+  </a>
   <img src="https://img.shields.io/badge/Platform-ESP8266%20%7C%20ESP32-000000?style=for-the-badge&logo=espressif" alt="Platform">
   <img src="https://img.shields.io/badge/Version-2.0-00D2FF?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
-  <img src="https://img.shields.io/badge/Author-Xbibz%20Official-FF6B35?style=for-the-badge" alt="Author">
-</p>
-
-<h1 align="center">ESP Compiler</h1>
-
-<p align="center">
-  <b>Compile ESP8266 & ESP32 firmware from terminal with zero hassle</b><br>
-  <sub>Auto-detect platform. Auto-install libraries. Real-time progress bar.</sub>
 </p>
 
 <p align="center">
@@ -273,11 +273,11 @@ MIT License - use freely in your projects.
 **Xbibz Official**
 
 <p align="center">
-  <a href="https://github.com/XbibzOfficial">
-    <img src="https://img.shields.io/badge/GitHub-XbibzOfficial-181717?style=for-the-badge&logo=github" alt="GitHub">
+  <a href="https://t.me/xbibzofc">
+    <img src="https://img.shields.io/badge/Telegram-t.me%2Fxbibzofc-26A5E4?style=for-the-badge&logo=telegram" alt="Telegram">
   </a>
-  <a href="https://t.me/XbibzOfficial">
-    <img src="https://img.shields.io/badge/Telegram-%40XbibzOfficial-26A5E4?style=for-the-badge&logo=telegram" alt="Telegram">
+  <a href="https://github.com/XbibzOfficial777">
+    <img src="https://img.shields.io/badge/GitHub-XbibzOfficial777-181717?style=for-the-badge&logo=github" alt="GitHub">
   </a>
 </p>
 
