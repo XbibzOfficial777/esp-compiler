@@ -144,6 +144,9 @@ def install_lib(cli_path, name, extra_index_url=""):
     """Install a library. Returns (success, message)."""
     idx_flag = f'--git-url "{extra_index_url}"' if extra_index_url else ''
     out, err = run(f'"{cli_path}" lib install "{name}" {idx_flag}', timeout=180)
+    # FIX #8: Check for None output (timeout/exception) in addition to error strings
+    if out is None:
+        return False, err  # Timeout or exception
     if err and "Error" in err:
         if "already exists" in err:
             return True, "already installed"
@@ -153,15 +156,21 @@ def install_lib(cli_path, name, extra_index_url=""):
 
 def install_core(cli_path, package, manager_url=""):
     """Install a board core. Returns (success, message)."""
+    # FIX #3: Don't overwrite existing config; use config init without --overwrite,
+    # and use 'add' instead of 'set' so multiple URLs accumulate.
+    # Only run 'config init' if no config file exists yet.
     out, err = run(
-        f'"{cli_path}" config init 2>/dev/null || true && '
-        f'"{cli_path}" config set board_manager.additional_urls "{manager_url}" && '
+        f'"{cli_path}" config init 2>/dev/null; '
+        f'"{cli_path}" config add board_manager.additional_urls "{manager_url}" 2>/dev/null; '
         f'"{cli_path}" core update-index && '
-        f'"{cli_path}" core install {package}',
+        f'"{cli_path}" core install "{package}"',
         timeout=300
     )
-    if out is None or (err and "Error" in err):
-        return False, err or "Command failed"
+    # FIX #8: Check for None output (timeout/exception) in addition to error strings
+    if out is None:
+        return False, err  # Timeout or exception
+    if err and "Error" in err:
+        return False, err
     return True, "Core installed"
 
 
@@ -201,17 +210,22 @@ HEADER_TO_LIB = {
     "ESPAsyncWebServer.h": "ESPAsyncWebServer",
 }
 
+# FIX #14: Removed duplicate WebServer.h entry; organized by category
 # Headers that are part of the platform core, not installable separately
 SKIPPED_LIBS = {
+    # Arduino core
     "Arduino.h", "WProgram.h", "wiring_private.h",
+    # AVR
     "avr/pgmspace.h", "avr/interrupt.h", "avr/wdt.h",
+    # C standard library
     "string.h", "stdio.h", "stdlib.h", "math.h",
     "ctype.h", "inttypes.h", "stdint.h",
     # ESP8266 built-in
     "ESP8266WiFi.h", "ESP8266WebServer.h", "ESP8266HTTPClient.h",
     "ESP8266mDNS.h", "ESP8266httpUpdate.h",
-    "EEPROM.h", "LittleFS.h", "FS.h", "SPI.h", "Wire.h",
     "SoftwareSerial.h", "Hash.h", "DNSServer.h",
+    # ESP8266/ESP32 shared built-in
+    "EEPROM.h", "LittleFS.h", "FS.h", "SPI.h", "Wire.h",
     "ESPAsyncTCP.h", "ESPAsyncWebServer.h",
     # ESP32 built-in
     "WiFi.h", "WiFiClient.h", "WiFiServer.h", "WiFiUdp.h",
@@ -228,33 +242,30 @@ SKIPPED_LIBS = {
 }
 
 
+# FIX #11: Unknown headers now return None instead of attempting install
 def resolve_lib_name(header):
-    """Map a header file name to an installable library name."""
+    """Map a header file name to an installable library name.
+    Returns None for headers not in the known mapping (likely project-local files)."""
     if header in SKIPPED_LIBS:
         return None
     if header in HEADER_TO_LIB:
         return HEADER_TO_LIB[header]
-    base = header.replace(".h", "").replace(".hpp", "")
-    skip_patterns = [
-        "config", "utils", "types", "defines", "globals", "common",
-        "debug", "helpers", "platform", "hardware", "io", "pin",
-        "settings", "constants", "macros", "errors", "logging",
-    ]
-    if base.lower() in skip_patterns:
-        return None
-    if not base[0].isupper() and "_" not in base:
-        return None
-    return base
+    # FIX #11: Unknown header — likely a project-local file, skip it
+    # Users can add custom libraries via config.json -> libraries.extra
+    return None
 
 
 # ============================================================
 # Board compatibility detection
 # ============================================================
 
+# FIX #6: ESPAsyncWebServer.h removed from ESP8266_HEADERS (works on both platforms)
+# AsyncTCP.h added to ESP32_HEADERS (ESP32 equivalent of ESPAsyncTCP)
 # ESP8266-specific headers
 ESP8266_HEADERS = {
     "ESP8266WiFi.h", "ESP8266WebServer.h", "ESP8266HTTPClient.h",
     "ESP8266mDNS.h", "ESP8266httpUpdate.h",
+    "ESPAsyncTCP.h",  # ESP8266 uses this, ESP32 uses AsyncTCP.h instead
 }
 
 # ESP32-specific headers
@@ -266,6 +277,7 @@ ESP32_HEADERS = {
     "ArduinoOTA.h", "ESPmDNS.h", "Preferences.h",
     "HTTPClient.h", "HTTPUpdate.h",
     "esp_task_wdt.h", "esp_timer.h",
+    "AsyncTCP.h",  # ESP32 equivalent of ESPAsyncTCP
 }
 
 

@@ -17,6 +17,21 @@ from lib.installer import run, get_arduino_cli
 CONFIG_PATH = Path(__file__).parent / "config.json"
 HOME = Path.home()
 
+# SAFETY: Paths that must NEVER be deleted, even if they match a lib/output dir
+# IMPORTANT: /sdcard and its subdirectories are HIGH RISK on Android/Termux
+PROTECTED_PATHS = {
+    "/sdcard", "/sdcard/", "/storage", "/storage/",
+    "/mnt", "/mnt/", "/home", "/home/",
+    "/", "/root", "/tmp",
+    os.path.expanduser("~"), os.path.expanduser("~") + "/",
+}
+
+# SAFETY: Path prefixes that are protected — any path starting with these is blocked
+# This prevents deleting /sdcard/anything, /storage/anything, etc.
+PROTECTED_PREFIXES = {
+    "/sdcard/", "/storage/emulated/",
+}
+
 
 class C:
     """ANSI color codes."""
@@ -32,10 +47,14 @@ class C:
     GRY = "\033[90m"
 
 
+# FIX #9: Add JSONDecodeError handling to load_config()
 def load_config():
     if CONFIG_PATH.exists():
-        with open(CONFIG_PATH, "r") as f:
-            return json.load(f)
+        try:
+            with open(CONFIG_PATH, "r") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            return {}
     return {}
 
 
@@ -64,6 +83,10 @@ def info(msg):
     print(f"      {C.GRY}[~]{C.RST} {msg}")
 
 
+def warn(msg):
+    print(f"      {C.YLW}[!]{C.RST} {msg}")
+
+
 def prompt_yn(msg, default=True):
     suffix = f"{C.GRN}Y{C.RST}/{C.RED}n{C.RST}" if default else f"{C.GRN}y{C.RST}/{C.RED}N{C.RST}"
     val = input(f"      {C.CYN}[?]{C.RST} {msg} [{suffix}]: ").strip().lower()
@@ -76,13 +99,49 @@ def divider(char="─", width=60):
     print(f"  {C.GRY}{char * width}{C.RST}")
 
 
+def is_protected_path(path):
+    """Check if a path is protected and should never be deleted.
+    HIGH RISK: /sdcard and /storage paths are ALWAYS blocked to prevent
+    accidental data loss on Android/Termux systems."""
+    abs_path = os.path.abspath(os.path.normpath(path))
+
+    # CRITICAL: Block any path under /sdcard or /storage/emulated (Android/Termux)
+    # These contain user data, photos, downloads — NEVER delete them
+    for prefix in PROTECTED_PREFIXES:
+        prefix_norm = os.path.abspath(os.path.normpath(prefix))
+        if abs_path.startswith(prefix_norm):
+            return True
+
+    # Block exact matches for other protected paths
+    for protected in PROTECTED_PATHS:
+        prot_norm = os.path.abspath(os.path.normpath(protected))
+        if abs_path == prot_norm:
+            return True
+        # Block shallow subdirectories (1 level) of home/root/etc
+        if abs_path.startswith(prot_norm + os.sep):
+            depth_diff = abs_path[len(prot_norm):].count(os.sep)
+            if depth_diff <= 1:
+                return True
+    return False
+
+
 def safe_remove(path, label=""):
-    """Remove file or directory safely."""
+    """Remove file or directory safely.
+    FIX #12: Check for symlinks BEFORE isdir() to prevent data loss via symlink targets.
+    SAFETY: Never delete protected paths like /sdcard, /home, /, etc."""
     target = label or path
+
+    # SAFETY: Check protected paths
+    if is_protected_path(path):
+        fail(f"BLOCKED: Refusing to delete protected path: {target}")
+        warn("This path is protected to prevent accidental data loss")
+        return False
+
     try:
+        # FIX #12: Check for symlinks FIRST — remove symlink, not its target
         if os.path.islink(path):
-            os.remove(path)
-            ok(f"Removed symlink: {target}")
+            os.remove(path)  # Remove the symlink itself, not the target directory
+            ok(f"Removed: {target} (symlink)")
             return True
         elif os.path.isfile(path):
             os.remove(path)
@@ -116,8 +175,15 @@ def cleanup_all(cfg, interactive=True):
         HOME / "Arduino",
     ]
     for d in arduino_dirs:
+        d_str = str(d)
+        # SAFETY: Check if path resolves to /sdcard (symlink to sdcard)
+        if os.path.islink(d_str):
+            real_target = os.path.realpath(d_str)
+            if is_protected_path(real_target):
+                warn(f"Skipping {d}: symlink points to protected path {real_target}")
+                continue
         if d.exists():
-            safe_remove(str(d))
+            safe_remove(d_str)
 
     section("Removing build output")
     output_dir = cfg.get("output", {}).get("dir", "build")
@@ -136,7 +202,11 @@ def cleanup_all(cfg, interactive=True):
             else:
                 info("Skipped")
         else:
-            safe_remove(lib_dir)
+            # SAFETY: In non-interactive mode, still prompt for library dir deletion
+            # to prevent accidental data loss
+            warn(f"Would remove library directory: {lib_dir}")
+            info("Skipping library directory in non-interactive mode for safety")
+            info("Use --libs-only with explicit confirmation to remove libraries")
 
     section("Cleaning shell config")
     marker = "# ESP-Compiler (XbibzOfficial)"
@@ -192,18 +262,28 @@ def cleanup_build_only(cfg):
 
 
 def cleanup_libs_only(cfg, cli_path):
-    """Remove only auto-installed libraries (not the entire directory)."""
+    """Remove installed libraries.
+    FIX #20: Use arduino-cli lib uninstall for each auto-installed library
+    instead of deleting the entire library directory."""
     section("Removing auto-installed libraries")
     lib_dir = cfg.get("libraries", {}).get("dir", str(HOME / "Arduino" / "libraries"))
-    if not os.path.isdir(lib_dir):
-        info("Library directory not found")
-        return
-    # Only remove if it's within the INSTALL_DIR, never remove ~/Arduino/libraries
-    if "Arduino" in lib_dir:
-        info("Skipping - would remove shared Arduino libraries")
-        info("Use 'arduino-cli lib uninstall <name>' to remove specific libraries")
+
+    # Check if we have a record of auto-installed libraries
+    auto_installed = cfg.get("libraries", {}).get("auto_installed", [])
+
+    if auto_installed:
+        info(f"Found {len(auto_installed)} auto-installed library record(s)")
+        for lib_name in auto_installed:
+            out, err = run(f'"arduino-cli" lib uninstall "{lib_name}"', timeout=60)
+            if err:
+                warn(f"{lib_name}: {err}")
+            else:
+                ok(f"Uninstalled: {lib_name}")
     else:
-        safe_remove(lib_dir)
+        warn("No auto-install records found in config.json")
+        warn("Cannot safely determine which libraries were installed by esp-compiler")
+        info("To remove ALL libraries manually, delete the library directory:")
+        info(f"  rm -rf \"{lib_dir}\"")
 
 
 def main():

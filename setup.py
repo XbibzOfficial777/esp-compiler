@@ -29,6 +29,7 @@ class C:
     GRY = "\033[90m"
 
 
+# FIX #9: Add JSONDecodeError handling to load_config()
 def load_config():
     if CONFIG_PATH.exists():
         try:
@@ -161,15 +162,20 @@ def setup_arduino_cli(cfg, interactive=True):
     os.chmod(cli_path, 0o755)
     ok(f"Installed: {cli_path}")
 
-    shell_name = os.path.basename(os.environ.get("SHELL", "/bin/bash"))
-    bashrc = HOME / ".zshrc" if shell_name == "zsh" else HOME / ".bashrc"
+    # FIX #13: Detect user's shell and update the appropriate RC file (zsh or bash)
+    shell_env = os.environ.get("SHELL", "/bin/bash")
+    if "zsh" in shell_env or (HOME / ".zshrc").exists():
+        rc_file = HOME / ".zshrc"
+    else:
+        rc_file = HOME / ".bashrc"
+
     path_entry = 'export PATH=$PATH:$HOME/.local/bin'
-    if bashrc.exists():
-        content = bashrc.read_text()
+    if rc_file.exists():
+        content = rc_file.read_text()
         if path_entry not in content:
-            with open(bashrc, "a") as f:
+            with open(rc_file, "a") as f:
                 f.write(f"\n{path_entry}\n")
-            info(f"Added to {bashrc.name}")
+            info(f"Added to ~/{rc_file.name}")
 
     cfg.setdefault("arduino_cli", {})["path"] = cli_path
     return True, cli_path
@@ -348,6 +354,8 @@ def main():
     parser.add_argument("--lib-dir", help="Set library directory")
     parser.add_argument("--output-dir", help="Set output directory")
     parser.add_argument("--skip-install", action="store_true")
+    # FIX #15: Add --platform flag for selective core installation
+    parser.add_argument("--platform", help="Install specific platform core(s): esp8266, esp32, or both (default: both)")
     args = parser.parse_args()
 
     banner()
@@ -377,37 +385,48 @@ def main():
             sys.exit(1)
         save_config(cfg)
 
-        # Install cores based on source file detection or user choice
-        source_file = cfg.get("source", {}).get("file", "")
-        if source_file and os.path.isfile(source_file):
-            from lib.installer import detect_platform
-            detected, _ = detect_platform(source_file)
-            if detected == "esp32":
-                setup_core(cfg, cli_path, "esp32", interactive)
-            elif detected == "esp8266":
-                setup_core(cfg, cli_path, "esp8266", interactive)
-            else:
-                # Unknown, install both
-                setup_core(cfg, cli_path, "esp8266", interactive)
-                setup_core(cfg, cli_path, "esp32", interactive)
+        # FIX #15: Allow user to choose which cores to install
+        # Supports --platform flag, source file detection, and interactive choice
+        install_esp8266 = True
+        install_esp32 = True
+
+        platform_choice = args.platform or ""
+        if platform_choice:
+            # --platform flag takes priority
+            install_esp8266 = platform_choice in ("esp8266", "both")
+            install_esp32 = platform_choice in ("esp32", "both")
         else:
-            # No source file, ask or install both
-            if interactive:
-                section("Select platform to install")
-                print(f"        1. ESP8266 only")
-                print(f"        2. ESP32 only")
-                print(f"        3. Both")
+            # Try source file detection first
+            source_file = cfg.get("source", {}).get("file", "")
+            if source_file and os.path.isfile(source_file):
+                from lib.installer import detect_platform
+                detected, _ = detect_platform(source_file)
+                if detected == "esp32":
+                    install_esp8266, install_esp32 = False, True
+                elif detected == "esp8266":
+                    install_esp8266, install_esp32 = True, False
+                else:
+                    install_esp8266, install_esp32 = True, True
+            elif interactive:
+                section("Select platform cores to install")
+                print(f"        {C.CYN}1{C.RST}. ESP8266 only")
+                print(f"        {C.CYN}2{C.RST}. ESP32 only")
+                print(f"        {C.CYN}3{C.RST}. Both (recommended)")
                 choice = prompt("Choice", "3")
                 if choice == "1":
-                    setup_core(cfg, cli_path, "esp8266", interactive)
+                    install_esp8266, install_esp32 = True, False
                 elif choice == "2":
-                    setup_core(cfg, cli_path, "esp32", interactive)
+                    install_esp8266, install_esp32 = False, True
                 else:
-                    setup_core(cfg, cli_path, "esp8266", interactive)
-                    setup_core(cfg, cli_path, "esp32", interactive)
-            else:
-                setup_core(cfg, cli_path, "esp8266", interactive)
-                setup_core(cfg, cli_path, "esp32", interactive)
+                    install_esp8266, install_esp32 = True, True
+
+        if install_esp8266:
+            setup_core(cfg, cli_path, "esp8266", interactive)
+            save_config(cfg)
+
+        if install_esp32:
+            setup_core(cfg, cli_path, "esp32", interactive)
+            save_config(cfg)
 
         select_platform_and_board(cfg, cli_path, interactive)
         save_config(cfg)

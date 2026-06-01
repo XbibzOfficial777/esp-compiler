@@ -1,12 +1,14 @@
 import re
 import os
+import shutil
 
 
+# FIX #16: EEPROM auto-patch now triggers for both ESP8266WiFi.h and WiFi.h (ESP32)
 DEFAULT_PATCHES = [
     {
         "id": "eeprom_include",
         "description": "Insert #include <EEPROM.h> after first WiFi include",
-        "pattern": r"(#include\s*<(?:ESP8266)?WiFi\.h>)",
+        "pattern": r"(#include\s*<(?:ESP8266WiFi|WiFi)\.h>)",
         "insert_after": '\n#include <EEPROM.h>',
         "check": r"#include\s*<EEPROM\.h>",
         "auto": True
@@ -72,6 +74,8 @@ def apply_patches(source_file, patches=None, dry_run=False):
                 results.append((pid, False, "Pattern not found, already fixed"))
 
         elif "check" in patch and "pattern" in patch and "insert_after" in patch:
+            # FIX #5: Only apply check logic when check is non-empty
+            # (empty check pattern matches everything, causing patches to always be skipped)
             if patch.get("check") and re.search(patch["check"], content):
                 results.append((pid, False, "Already present"))
             else:
@@ -104,9 +108,11 @@ def apply_patches(source_file, patches=None, dry_run=False):
         else:
             results.append((pid, False, "Unknown patch format"))
 
+    # FIX #19: Create backup before modifying source file
     if content != original and not dry_run:
         backup_path = source_file + ".bak"
-        write_file(backup_path, original)
+        if not os.path.exists(backup_path):
+            shutil.copy2(source_file, backup_path)
         write_file(source_file, content)
 
     return results
@@ -132,7 +138,8 @@ def build_patches_from_config(config):
                 "description": rule.get("description", "Custom patch"),
                 "pattern": rule["pattern"],
                 "insert_after": rule["text"],
-                "check": rule.get("check", ""),
+                # FIX #5: Default check to None instead of "" to avoid empty regex matching everything
+                "check": rule.get("check", None),
                 "auto": rule.get("auto", True)
             })
 
