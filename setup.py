@@ -309,7 +309,7 @@ def setup_paths(cfg, interactive=True):
 def setup_libraries(cfg, cli_path, interactive=True):
     section("Checking libraries")
     source_file = cfg.get("source", {}).get("file", "")
-    lib_dir = cfg.get("libraries", {}).get("dir", str(HOME / "Arduino" / "libraries"))
+    lib_dir = cfg.get("libraries", {}).get("dir", "") or str(HOME / "Arduino" / "libraries")
     extra_libs = cfg.get("libraries", {}).get("extra", [])
 
     if source_file and os.path.isfile(source_file) and cfg.get("libraries", {}).get("auto_install", True):

@@ -29,8 +29,11 @@ PROTECTED_PATHS = {
 # SAFETY: Path prefixes that are protected — any path starting with these is blocked
 # This prevents deleting /sdcard/anything, /storage/anything, etc.
 PROTECTED_PREFIXES = {
-    "/sdcard/", "/storage/emulated/",
+    "/sdcard/", "/storage/",
 }
+
+# Paths created by this tool that are safe to delete (bypass protected path check)
+ALLOWLIST_PATHS = set()
 
 
 class C:
@@ -102,10 +105,16 @@ def divider(char="─", width=60):
 def is_protected_path(path):
     """Check if a path is protected and should never be deleted.
     HIGH RISK: /sdcard and /storage paths are ALWAYS blocked to prevent
-    accidental data loss on Android/Termux systems."""
+    accidental data loss on Android/Termux systems.
+    Paths in ALLOWLIST_PATHS bypass this check."""
     abs_path = os.path.abspath(os.path.normpath(path))
 
-    # CRITICAL: Block any path under /sdcard or /storage/emulated (Android/Termux)
+    # Allowlist: known safe paths created by this tool
+    for allowed in ALLOWLIST_PATHS:
+        if abs_path == os.path.abspath(os.path.normpath(allowed)):
+            return False
+
+    # CRITICAL: Block any path under /sdcard or /storage (Android/Termux)
     # These contain user data, photos, downloads — NEVER delete them
     for prefix in PROTECTED_PREFIXES:
         prefix_norm = os.path.abspath(os.path.normpath(prefix))
@@ -160,6 +169,7 @@ def safe_remove(path, label=""):
 
 def cleanup_all(cfg, interactive=True):
     """Full cleanup: binary, config, libraries, build artifacts, bashrc."""
+    ALLOWLIST_PATHS.add(get_default_output_dir())
 
     section("Removing arduino-cli binary")
     cli_path = get_arduino_cli(cfg)
@@ -248,6 +258,7 @@ def cleanup_all(cfg, interactive=True):
 
 def cleanup_build_only(cfg):
     """Remove only build artifacts."""
+    ALLOWLIST_PATHS.add(get_default_output_dir())
     section("Removing build output")
     output_dir = get_default_output_dir()
     safe_remove(output_dir)
@@ -266,7 +277,7 @@ def cleanup_libs_only(cfg, cli_path):
     if auto_installed:
         info(f"Found {len(auto_installed)} auto-installed library record(s)")
         for lib_name in auto_installed:
-            out, err = run(f'"arduino-cli" lib uninstall "{lib_name}"', timeout=60)
+            out, err = run(f'"{cli_path}" lib uninstall "{lib_name}"', timeout=60)
             if err:
                 warn(f"{lib_name}: {err}")
             else:

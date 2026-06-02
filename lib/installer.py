@@ -246,7 +246,6 @@ SKIPPED_LIBS = {
     "SoftwareSerial.h", "Hash.h", "DNSServer.h", "Updater.h",
     # ESP8266/ESP32 shared built-in
     "EEPROM.h", "LittleFS.h", "FS.h", "SPI.h", "Wire.h",
-    "ESPAsyncTCP.h", "ESPAsyncWebServer.h",
     # ESP32 built-in
     "WiFi.h", "WiFiClient.h", "WiFiServer.h", "WiFiUdp.h",
     "WiFiClientSecure.h", "WiFiAP.h", "WiFiScan.h",

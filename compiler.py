@@ -398,29 +398,27 @@ def main():
             else:
                 sys.exit(1)
 
-    # FIX #2 & #18: Completely rewritten step selection logic
-    # --dry-run now runs patching in dry mode, skips libs and compile
-    # --no-patch / --no-libs are properly respected without falling through to prompt
     do_patch = True
     do_libs = True
     do_compile = True
 
-    if args.dry_run:
-        # Dry run: run patching in dry mode, skip libs and compile
-        do_patch = True
-        do_libs = False
-        do_compile = False
-    else:
-        if args.no_patch:
-            do_patch = False
-        if args.no_libs:
-            do_libs = False
-
-    # --all explicitly enables all steps (except compile in dry-run)
-    if args.all and not args.dry_run:
+    # --all enables all steps first (used as base when no explicit flags)
+    if args.all:
         do_patch = True
         do_libs = True
         do_compile = True
+
+    # Dry run: only patch in dry mode, skip everything else
+    if args.dry_run:
+        do_patch = True
+        do_libs = False
+        do_compile = False
+
+    # Explicit --no-* flags always override (even when combined with --all)
+    if args.no_patch:
+        do_patch = False
+    if args.no_libs:
+        do_libs = False
 
     # Only show interactive step selection if no relevant flags were given
     if interactive and not any([args.all, args.dry_run, args.no_patch, args.no_libs]):

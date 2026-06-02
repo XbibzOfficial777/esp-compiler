@@ -110,9 +110,15 @@ def apply_patches(source_file, patches=None, dry_run=False):
 
     # FIX #19: Create backup before modifying source file
     if content != original and not dry_run:
+        import time
         backup_path = source_file + ".bak"
         if not os.path.exists(backup_path):
             shutil.copy2(source_file, backup_path)
+        else:
+            ts = time.strftime("%Y%m%d-%H%M%S")
+            backup_ts = source_file + f".bak.{ts}"
+            if not os.path.exists(backup_ts):
+                shutil.copy2(source_file, backup_ts)
         write_file(source_file, content)
 
     return results

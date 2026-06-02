@@ -42,10 +42,14 @@ _div()  { printf '  %s%s%s\n' "$(_c d)" "$(printf '─%.0s' {1..60})" "$(_c x)";
 detect_shell() {
     local name
     name=$(basename "${SHELL:-/bin/bash}")
-    if [ "$name" = "zsh" ] || [ -f "$HOME/.zshrc" ]; then
+    if [ "$name" = "zsh" ]; then
         SHELL_RC="$HOME/.zshrc"; SHELL_NAME="zsh"
-    else
+    elif [ "$name" = "bash" ]; then
         SHELL_RC="$HOME/.bashrc"; SHELL_NAME="bash"
+    elif [ -f "$HOME/.zshrc" ]; then
+        SHELL_RC="$HOME/.zshrc"; SHELL_NAME="zsh (fallback)"
+    else
+        SHELL_RC="$HOME/.bashrc"; SHELL_NAME="bash (fallback)"
     fi
     _info "Shell: ${SHELL_NAME} (${SHELL_RC})"
 }
@@ -163,7 +167,12 @@ cesp() {
     local cmd="\$1"; shift
     case "\$cmd" in
         setup|s)    python3 "${INSTALL_DIR}/setup.py" "\$@";;
-        compile|c)  python3 "${INSTALL_DIR}/compiler.py" --source "\$@";;
+        compile|c)
+            if [ \$# -eq 0 ]; then
+                python3 "${INSTALL_DIR}/compiler.py"
+            else
+                python3 "${INSTALL_DIR}/compiler.py" --source "\$@"
+            fi;;
         clean)      python3 "${INSTALL_DIR}/cleanup.py" "\$@";;
         help|h)     echo "Usage: cesp [setup|compile|clean|uninstall] [flags]";;
         uninstall)  bash "${INSTALL_DIR}/uninstall.sh";;
@@ -186,7 +195,12 @@ fi
 cmd="$1"; shift
 case "$cmd" in
     setup|s)    python3 "${COMPILER_DIR}/setup.py" "$@";;
-    compile|c)  python3 "${COMPILER_DIR}/compiler.py" --source "$@";;
+    compile|c)
+        if [ $# -eq 0 ]; then
+            python3 "${COMPILER_DIR}/compiler.py"
+        else
+            python3 "${COMPILER_DIR}/compiler.py" --source "$@"
+        fi;;
     clean)      python3 "${COMPILER_DIR}/cleanup.py" "$@";;
     help|h)     echo "Usage: cesp [setup|compile|clean|uninstall] [flags]";;
     uninstall)  bash "${COMPILER_DIR}/uninstall.sh";;
