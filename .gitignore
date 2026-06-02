@@ -6,3 +6,5 @@ build/
 *.sqlite
 *bibz
 *auth
+*.git
+AGENTS.md

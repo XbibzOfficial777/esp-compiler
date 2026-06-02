@@ -102,6 +102,9 @@ Custom rules in `config.json` → `patches.rules[]`. Types: `regex_replace`, `in
 
 - Built-in headers (`SKIPPED_LIBS` in `installer.py`) are never auto-installed.
 - `HEADER_TO_LIB` maps 20+ common headers (including `WebSocketsServer.h`) to `arduino-cli lib install` names.
+- `HEADER_TO_GIT` maps headers to GitHub repo URLs as fallback when `arduino-cli lib install` fails.
+  - `WebSocketsServer.h` → `https://github.com/Links2004/arduinoWebSockets.git`
+- **Install flow**: arduino-cli first → if error + git_url exists → `git clone --depth 1` into lib_dir.
 - Unknown headers are **silently skipped** (assumed to be project-local files).
 - Add custom library requirements via `config.json` → `libraries.extra[]`.
 - `auto_installed` list in config tracks what was auto-installed (used by `cleanup --libs-only`).

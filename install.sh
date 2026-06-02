@@ -156,6 +156,10 @@ setup_shell() {
 ${marker}
 export PATH="${BIN_DIR}:\$PATH"
 cesp() {
+    if [ \$# -eq 0 ]; then
+        python3 "${INSTALL_DIR}/compiler.py"
+        return \$?
+    fi
     local cmd="\$1"; shift
     case "\$cmd" in
         setup|s)    python3 "${INSTALL_DIR}/setup.py" "\$@";;
@@ -175,6 +179,10 @@ EOF
     cat > "${BIN_DIR}/cesp" << 'BIN'
 #!/bin/bash
 COMPILER_DIR="${ESP_COMPILER_DIR:-$HOME/.esp-compiler}"
+if [ $# -eq 0 ]; then
+    python3 "${COMPILER_DIR}/compiler.py"
+    exit $?
+fi
 cmd="$1"; shift
 case "$cmd" in
     setup|s)    python3 "${COMPILER_DIR}/setup.py" "$@";;
