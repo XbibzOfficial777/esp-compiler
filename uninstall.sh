@@ -3,7 +3,9 @@
 #  ESP32 / ESP8266 Firmware Compiler - Uninstaller
 #  curl -fsSL https://raw.githubusercontent.com/XbibzOfficial777/esp-compiler/main/uninstall.sh | bash
 # ============================================================
-set -e
+# FIX: Removed `set -e` — it caused the entire script to abort if `read` in
+# prompt_yn() received EOF (e.g. piped from curl) or if any non-critical
+# command returned non-zero. The script handles errors manually via _fail/_info.
 
 # --- Config ---
 INSTALL_DIR="${ESP_COMPILER_DIR:-$HOME/.esp-compiler}"

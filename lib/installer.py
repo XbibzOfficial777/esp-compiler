@@ -56,21 +56,26 @@ def get_installed_cores(cli_path):
             if not isinstance(p, dict):
                 continue
             core_id = p.get("id", "")
-            releases = p.get("releases", {})
-            installed_ver = ""
-            for ver, info in releases.items():
-                if isinstance(info, dict) and info.get("installed"):
-                    installed_ver = ver
-                    break
+
+            # FIX: Check top-level installed_version first (newer arduino-cli format),
+            # then scan releases dict for an entry with installed=True.
+            # Previously the code fell back to ANY version when no installed flag was set,
+            # causing non-installed cores to appear as installed.
+            installed_ver = p.get("installed_version", "")
             if not installed_ver:
+                releases = p.get("releases", {})
                 for ver, info in releases.items():
-                    if isinstance(info, dict):
+                    if isinstance(info, dict) and info.get("installed"):
                         installed_ver = ver
                         break
+
+            if not installed_ver:
+                continue  # FIX: skip cores that are not actually installed
+
             results.append({
                 "id": core_id,
                 "name": p.get("name", core_id),
-                "installed_version": installed_ver or p.get("installed_version", "")
+                "installed_version": installed_ver
             })
         return results
     except json.JSONDecodeError:
@@ -388,8 +393,9 @@ def auto_install_libs(cli_path, source_file, lib_dir, extra_libs=None, extra_ind
     for lib_name in sorted(to_install):
         header = next((h for h, ln in HEADER_TO_LIB.items() if ln == lib_name), "")
         git_url = HEADER_TO_GIT.get(header, "")
-        ok, msg = install_lib(cli_path, lib_name, lib_dir, git_url)
-        status = "installed" if ok else f"failed: {msg}"
+        # FIX: Renamed `ok` to `lib_ok` to avoid shadowing any outer `ok` helper
+        lib_ok, msg = install_lib(cli_path, lib_name, lib_dir, git_url)
+        status = "installed" if lib_ok else f"failed: {msg}"
         results.append((lib_name, status))
 
     return results

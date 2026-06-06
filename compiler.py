@@ -270,15 +270,16 @@ def run_compile(cli_path, source_file, cfg, verbose=True):
         return False
 
     # FIX #7: Only pass --verbose to arduino-cli when user requests it
-    verbose_flag = "--verbose " if verbose else ""
+    # FIX: Use a list of extra flags instead of a string with trailing space
+    verbose_flag = "--verbose" if verbose else ""
 
     cmd = (
         f'"{cli_path}" compile '
         f'--fqbn "{fqbn}" '
         f'--libraries "{lib_dir}" '
         f'--output-dir "{output_dir}" '
-        f'{verbose_flag}'
-        f'"{source_file}"'
+        + (f'{verbose_flag} ' if verbose_flag else "")
+        + f'"{source_file}"'
     )
 
     info(f"FQBN    : {fqbn}")
@@ -358,6 +359,11 @@ def main():
         if not source_file:
             fail("No source file. Exiting.")
             sys.exit(1)
+    elif not source_file:
+        # FIX: Non-interactive mode with no --source and no config source — exit clearly
+        # Previously fell through to ok(f"Source: {source_file}") with an empty string.
+        fail("No source file specified. Use --source <file.ino>")
+        sys.exit(1)
     elif source_file:
         valid, result = validate_source(source_file)
         if not valid:
