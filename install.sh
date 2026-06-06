@@ -154,9 +154,21 @@ setup_shell() {
     _log "Setting up ${SHELL_NAME}"
 
     local marker="# ESP-Compiler (XbibzOfficial)"
-    if [ -f "$SHELL_RC" ] && grep -q "$marker" "$SHELL_RC" 2>/dev/null; then
-        _ok "Shell already configured"
-    else
+    local end_marker="# End ESP-Compiler"
+
+    # FIX: Always remove old cesp shell function and rewrite it.
+    # Previously we skipped rewriting if the marker existed, leaving stale/buggy
+    # function definitions (e.g. missing $# guard that caused zsh shift crash).
+    for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+        [ -f "$rc" ] || continue
+        if grep -q "$marker" "$rc" 2>/dev/null; then
+            local tmp="${rc}.cesp-update.tmp"
+            sed "/${marker//\#/\\#}/,/${end_marker//\#/\\#}/d" "$rc" > "$tmp" && mv "$tmp" "$rc"
+            _info "Removed old cesp definition from ${rc}"
+        fi
+    done
+
+    if [ -f "$SHELL_RC" ]; then
         cat >> "$SHELL_RC" << EOF
 
 ${marker}
@@ -173,9 +185,6 @@ cesp() {
             if [ \$# -eq 0 ]; then
                 python3 "${INSTALL_DIR}/compiler.py"
             else
-                # FIX: Extract the first positional argument as --source, then
-                # forward remaining args ($@) so flags like --board, --dry-run etc.
-                # are passed correctly instead of being bundled into --source value.
                 local src="\$1"; shift
                 python3 "${INSTALL_DIR}/compiler.py" --source "\$src" "\$@"
             fi;;
@@ -185,9 +194,9 @@ cesp() {
         *)          python3 "${INSTALL_DIR}/compiler.py" --source "\$cmd" "\$@";;
     esac
 }
-# End ESP-Compiler
+${end_marker}
 EOF
-        _ok "Added cesp command"
+        _ok "Added cesp command to ${SHELL_RC}"
     fi
 
     mkdir -p "${BIN_DIR}"
