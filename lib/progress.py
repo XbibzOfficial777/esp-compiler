@@ -333,7 +333,11 @@ def run_compile_with_progress(cmd, timeout=300, source_dir=None):
         for line in proc.stdout:
             progress.feed_line(line.rstrip())
 
-        proc.wait(timeout=timeout)
+        # FIX: Use proc.wait() without timeout after stdout is exhausted — the process
+        # has already finished writing output, so it will return immediately.
+        # Previously `proc.wait(timeout=timeout)` could raise TimeoutExpired even for
+        # a completed process if the OS scheduler delayed the wait call.
+        proc.wait()
         elapsed = time.time() - start
 
         success = proc.returncode == 0

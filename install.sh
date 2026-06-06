@@ -129,6 +129,8 @@ install_arduino_cli() {
     BINDIR="${BIN_DIR}" bash "$tmpsh" >/dev/null 2>&1 &
     local pid=$!
 
+    # FIX: Give process a moment to start before polling; check it actually started
+    sleep 0.05
     # Spinner while waiting
     local sp='|/-\'
     local i=0
@@ -171,7 +173,11 @@ cesp() {
             if [ \$# -eq 0 ]; then
                 python3 "${INSTALL_DIR}/compiler.py"
             else
-                python3 "${INSTALL_DIR}/compiler.py" --source "\$@"
+                # FIX: Extract the first positional argument as --source, then
+                # forward remaining args ($@) so flags like --board, --dry-run etc.
+                # are passed correctly instead of being bundled into --source value.
+                local src="\$1"; shift
+                python3 "${INSTALL_DIR}/compiler.py" --source "\$src" "\$@"
             fi;;
         clean)      python3 "${INSTALL_DIR}/cleanup.py" "\$@";;
         help|h)     echo "Usage: cesp [setup|compile|clean|uninstall] [flags]";;
@@ -199,7 +205,9 @@ case "$cmd" in
         if [ $# -eq 0 ]; then
             python3 "${COMPILER_DIR}/compiler.py"
         else
-            python3 "${COMPILER_DIR}/compiler.py" --source "$@"
+            # FIX: Split first arg as --source, forward remaining flags separately
+            src="$1"; shift
+            python3 "${COMPILER_DIR}/compiler.py" --source "$src" "$@"
         fi;;
     clean)      python3 "${COMPILER_DIR}/cleanup.py" "$@";;
     help|h)     echo "Usage: cesp [setup|compile|clean|uninstall] [flags]";;

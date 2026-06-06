@@ -154,11 +154,16 @@ def setup_arduino_cli(cfg, interactive=True):
     url = "https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh"
     spinner = Spinner("Downloading installer")
     spinner.start()
-    ok_dl = run(f'curl -fsSL {url} | BINDIR="{install_dir}" sh', timeout=120)
+    # FIX: Check return value of the curl|sh download — previously ok_dl was captured
+    # but never inspected, so a failed download would silently continue.
+    ok_dl, err_dl = run(f'curl -fsSL {url} | BINDIR="{install_dir}" sh', timeout=120)
     spinner.stop()
 
     if not os.path.isfile(cli_path):
-        fail("Install failed")
+        if err_dl:
+            fail(f"Install failed: {err_dl}")
+        else:
+            fail("Install failed (binary not found after install)")
         return False, ""
     os.chmod(cli_path, 0o755)
     ok(f"Installed: {cli_path}")

@@ -126,11 +126,10 @@ def is_protected_path(path):
         prot_norm = os.path.abspath(os.path.normpath(protected))
         if abs_path == prot_norm:
             return True
-        # Block shallow subdirectories (1 level) of home/root/etc
-        if abs_path.startswith(prot_norm + os.sep):
-            depth_diff = abs_path[len(prot_norm):].count(os.sep)
-            if depth_diff <= 1:
-                return True
+        # FIX: Only block the protected path itself and paths that ARE the home dir —
+        # do NOT block subdirectories. The old code blocked depth <= 1 which prevented
+        # deleting ~/.arduino15 (a direct child of ~) even though it's a safe build artifact.
+        # Home/root dirs themselves are protected; their children are allowed.
     return False
 
 

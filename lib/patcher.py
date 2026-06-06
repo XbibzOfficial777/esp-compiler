@@ -144,8 +144,9 @@ def build_patches_from_config(config):
                 "description": rule.get("description", "Custom patch"),
                 "pattern": rule["pattern"],
                 "insert_after": rule["text"],
-                # FIX #5: Default check to None instead of "" to avoid empty regex matching everything
-                "check": rule.get("check", None),
+                # FIX: Treat empty string check same as None — both mean "no check",
+                # preventing empty regex from matching everything and skipping the patch.
+                "check": rule.get("check") or None,
                 "auto": rule.get("auto", True)
             })
 
